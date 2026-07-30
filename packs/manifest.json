@@ -1,7 +1,10 @@
 [
-    "packs/example/impresjonizm.md",
-    "packs/example/rzym.md",
+    "packs/example/geografia.md",
+    "packs/example/ptaki.md",
     "packs/example/math.md",
     "packs/example/linux.md",
-    "packs/example/prad.md"
+    "packs/example/emacs.md",
+    "packs/example/prl.md",
+    "packs/example/impresjonizm.md",
+    "packs/example/rzym.md"
 ]

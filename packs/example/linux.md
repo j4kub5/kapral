@@ -1,381 +1,149 @@
-# Linux dla początkujących
-
-## Jądro Linux
-
-### Który mechanizm pozwala dynamicznie śledzić funkcje jądra bez rekompilacji?
-
-* [ ] ptrace
-* [x] ftrace
-* [ ] auditd
-* [ ] syslog
-
-> Wyjaśnienie: ftrace jest wbudowanym frameworkiem do śledzenia działania jądra.
-
-### Który interfejs umożliwia bezpieczne uruchamianie kodu w jądrze bez pisania modułów?
-
-* [ ] kdump
-* [ ] initramfs
-* [x] eBPF
-* [ ] cgroups
-
-> Wyjaśnienie: eBPF pozwala wykonywać zweryfikowane programy wewnątrz jądra.
-
-### Do czego służy mechanizm RCU (Read-Copy-Update)?
-
-* [ ] Zarządzania pamięcią swap
-* [ ] Synchronizacji czasu
-* [x] Synchronizacji dostępu do współdzielonych danych
-* [ ] Obsługi IRQ
-
-> Wyjaśnienie: RCU minimalizuje blokowanie podczas odczytów.
-
-### Który plik zawiera aktualnie uruchomione parametry jądra?
-
-* [ ] /boot/config
-* [x] /proc/config.gz
-* [ ] /etc/sysctl.conf
-* [ ] /lib/modules
-
-> Wyjaśnienie: Jeśli opcja CONFIG_IKCONFIG_PROC jest włączona, konfiguracja dostępna jest w /proc/config.gz.
-
-### Który mechanizm odpowiada za dynamiczne ładowanie modułów jądra?
-
-* [ ] systemd
-* [ ] init
-* [ ] ldconfig
-* [x] kmod
-
-> Wyjaśnienie: Narzędzia modprobe i insmod są częścią pakietu kmod.
-
-## System plików
-
-### Który system plików natywnie obsługuje snapshoty?
-
-* [ ] ext4
-* [x] Btrfs
-* [ ] XFS
-* [ ] FAT32
-
-### Który system plików nie pozwala zmniejszać istniejącego systemu plików?
-
-* [ ] ext4
-* [ ] Btrfs
-* [x] XFS
-* [ ] ext3
-
-### Co oznacza opcja noatime przy montowaniu?
-
-* [ ] Wyłącza prawa dostępu
-* [x] Nie aktualizuje czasu ostatniego odczytu plików
-* [ ] Wyłącza journaling
-* [ ] Montuje tylko do odczytu
-
-### Które narzędzie służy do sprawdzania integralności systemu plików ext4?
-
-* [ ] xfs_repair
-* [x] e2fsck
-* [ ] btrfs scrub
-* [ ] fsrepair
-
-### Który system plików jest Copy-on-Write?
-
-* [ ] ext4
-* [ ] XFS
-* [x] Btrfs
-* [ ] exFAT
-
-## Procesy
-
-### Który sygnał nie może zostać przechwycony przez proces?
-
-* [ ] SIGTERM
-* [ ] SIGINT
-* [x] SIGKILL
-* [ ] SIGUSR1
-
-### Co oznacza stan D procesu w ps?
-
-* [ ] Zombie
-* [ ] Uśpiony
-* [x] Nieprzerywalne oczekiwanie na I/O
-* [ ] Debugowany
-
-### Które polecenie pokazuje drzewo procesów?
-
-* [ ] top
-* [ ] htop
-* [ ] ps aux
-* [x] pstree
-
-### Jakie polecenie zmienia priorytet już uruchomionego procesu?
-
-* [ ] nice
-* [x] renice
-* [ ] ionice
-* [ ] taskset
-
-### Który scheduler jest domyślny dla zwykłych procesów?
-
-* [ ] SCHED_FIFO
-* [ ] SCHED_RR
-* [x] CFS
-* [ ] EDF
-
-## Sieci
-
-### Które polecenie zastępuje ifconfig?
-
-* [ ] route
-* [ ] netcfg
-* [x] ip
-* [ ] nm
-
-### Które narzędzie przechwytuje pakiety?
-
-* [ ] ss
-* [ ] ip
-* [ ] nc
-* [x] tcpdump
-
-### Który katalog zawiera informacje o stosie sieciowym?
-
-* [ ] /etc/net
-* [ ] /run/net
-* [x] /proc/sys/net
-* [ ] /lib/net
-
-### Który protokół wykorzystuje polecenie ping?
-
-* [ ] UDP
-* [ ] TCP
-* [x] ICMP
-* [ ] ARP
-
-### Które polecenie pokazuje gniazda sieciowe?
-
-* [ ] netcat
-* [ ] ip addr
-* [x] ss
-* [ ] traceroute
-
-## Systemd
-
-### Jakie polecenie pokazuje zależności jednostki?
-
-* [ ] systemctl status
-* [x] systemctl list-dependencies
-* [ ] journalctl
-* [ ] loginctl
-
-### Który katalog zawiera jednostki administratora?
-
-* [ ] /usr/lib/systemd/system
-* [ ] /run/systemd/system
-* [x] /etc/systemd/system
-* [ ] /boot/systemd
-
-### Które polecenie pokazuje logi konkretnej usługi?
-
-* [ ] systemctl logs
-* [ ] dmesg
-* [x] journalctl -u
-* [ ] logread
-
-### Co oznacza typ usługi oneshot?
-
-* [ ] Działa stale
-* [ ] Uruchamia wiele procesów
-* [x] Wykonuje zadanie i kończy pracę
-* [ ] Uruchamia się tylko przy starcie
-
-### Która jednostka odpowiada poziomowi runlevel 3?
-
-* [ ] graphical.target
-* [x] multi-user.target
-* [ ] rescue.target
-* [ ] basic.target
-
-## Bezpieczeństwo
-
-### Który framework implementuje Mandatory Access Control w wielu dystrybucjach?
-
-* [ ] PAM
-* [ ] nftables
-* [x] SELinux
-* [ ] auditctl
-
-### Co robi polecenie setcap?
-
-* [ ] Nadaje prawa chmod
-* [ ] Tworzy użytkownika
-* [x] Nadaje capabilities plikowi
-* [ ] Ustawia ACL
-
-### Który moduł PAM blokuje konto po wielu nieudanych logowaniach?
-
-* [ ] pam_rootok
-* [x] pam_faillock
-* [ ] pam_env
-* [ ] pam_exec
-
-### Które polecenie wyświetla kontekst SELinux?
-
-* [ ] lsattr
-* [ ] stat
-* [x] ls -Z
-* [ ] sestatus -v
-
-### Który mechanizm ogranicza zasoby procesu?
-
-* [ ] iptables
-* [x] cgroups
-* [ ] AppArmor
-* [ ] nft
-
-## Kontenery
-
-### Która technologia odpowiada za izolację PID, sieci i mountów?
-
-* [ ] cgroups
-* [x] namespaces
-* [ ] seccomp
-* [ ] PAM
-
-### Co odpowiada za ograniczanie CPU i RAM kontenera?
-
-* [ ] namespaces
-* [ ] overlayfs
-* [x] cgroups
-* [ ] iptables
-
-### Który sterownik Docker wykorzystuje warstwowy system plików?
-
-* [ ] tmpfs
-* [ ] aufs2
-* [x] overlay2
-* [ ] ramfs
-
-### Który runtime jest zgodny ze specyfikacją OCI?
-
-* [ ] kubelet
-* [x] runc
-* [ ] podman
-* [ ] dockerd
-
-### Co oznacza rootless containers?
-
-* [ ] Kontenery bez systemu plików
-* [ ] Kontenery tylko do odczytu
-* [x] Kontenery uruchamiane bez uprawnień roota
-* [ ] Kontenery bez sieci
-
-## Pamięć
-
-### Które polecenie pokazuje użycie pamięci w czasie rzeczywistym?
-
-* [ ] vmstat -d
-* [ ] free -c
-* [x] vmstat
-* [ ] slabtop -o
-
-### Co oznacza OOM Killer?
-
-* [ ] Optymalizator pamięci
-* [ ] Bufor dyskowy
-* [x] Mechanizm zabijający procesy przy braku pamięci
-* [ ] Moduł swap
-
-### Który katalog zawiera informacje o pamięci?
-
-* [ ] /sys/memory
-* [ ] /etc/memory
-* [x] /proc/meminfo
-* [ ] /run/memory
-
-### Co pokazuje polecenie slabtop?
-
-* [ ] Zużycie CPU
-* [ ] Bufory sieciowe
-* [x] Wykorzystanie alokatora SLAB
-* [ ] Obciążenie dysku
-
-### Do czego służy swappiness?
-
-* [ ] Steruje cache DNS
-* [ ] Ustawia rozmiar swap
-* [x] Określa skłonność do używania swapu
-* [ ] Zarządza page cache
-
-## Diagnostyka
-
-### Które polecenie śledzi wywołania systemowe procesu?
-
-* [ ] ltrace
-* [x] strace
-* [ ] perf
-* [ ] tracepath
-
-### Które narzędzie analizuje wydajność CPU na poziomie jądra?
-
-* [ ] vmstat
-* [ ] iostat
-* [x] perf
-* [ ] sar
-
-### Co pokazuje iostat?
-
-* [ ] Tylko pamięć RAM
-* [x] Statystyki I/O dysków
-* [ ] Ruch sieciowy
-* [ ] Temperatury CPU
-
-### Które polecenie pokazuje komunikaty jądra?
-
-* [ ] journalctl
-* [ ] tail /var/log/messages
-* [x] dmesg
-* [ ] sysctl
-
-### Który katalog zawiera informacje o urządzeniach eksportowane przez jądro?
-
-* [ ] /dev/info
-* [ ] /etc/sys
-* [x] /sys
-* [ ] /run/dev
-
-## Różne
-
-### Który harmonogram zadań obsługuje zależności i kalendarze zamiast klasycznego cron?
-
-* [ ] anacron
-* [ ] at
-* [x] systemd timers
-* [ ] fcron
-
-### Który format wykonywalnych plików stosowany jest w Linuksie?
-
-* [ ] PE
-* [ ] Mach-O
-* [x] ELF
-* [ ] COFF
-
-### Jakie polecenie pokazuje zależności bibliotek współdzielonych programu?
-
-* [ ] objdump
-* [ ] nm
-* [x] ldd
-* [ ] strings
-
-### Który mechanizm umożliwia uruchamianie binarek dla innych architektur CPU?
-
-* [ ] chroot
-* [x] binfmt_misc
-* [ ] qdisc
-* [ ] ld-linux
-
-### Które polecenie wyświetla capabilities pliku wykonywalnego?
-
-* [ ] getfacl
-* [ ] lsattr
-* [x] getcap
-* [ ] capshow
+# Linux
+
+## Podstawy i Komendy
+
+### Które polecenie służy do wyświetlenia ścieżki bieżącego katalogu roboczego?
+- [ ] `cd`
+- [x] `pwd`
+- [ ] `dir`
+- [ ] `whoami`
+> Wyjaśnienie: Akronim `pwd` oznacza *Print Working Directory*.
+
+### Jaka flaga polecenia `ls` wyświetla pliki ukryte (zaczynające się od kropki)?
+- [ ] `-l`
+- [ ] `-h`
+- [x] `-a`
+- [ ] `-r`
+> Wyjaśnienie: Flaga `-a` (*all*) nakazuje uwzględnienie wpisów rozpoczynających się od kropki.
+
+### Jakie działanie wywoła wykonanie polecenia `cd ~` w terminalu?
+- [ ] Przejście do katalogu głównego systemu (`/`)
+- [x] Przejście do katalogu domowego bieżącego użytkownika
+- [ ] Przejście do poprzednio odwiedzonego katalogu
+- [ ] Wyświetlenie pomocy dotyczącej komendy `cd`
+> Wyjaśnienie: Tylda `~` w powłoce reprezentuje ścieżkę do katalogu domowego (np. `/home/user`).
+
+### Które polecenie wypisuje zawartość pliku tekstowego bezpośrednio na standardowe wyjście?
+- [x] `cat`
+- [ ] `touch`
+- [ ] `echo`
+- [ ] `nano`
+> Wyjaśnienie: `cat` (*concatenate*) służy do łączenia i wyświetlania zawartości plików.
+
+### Jaki skrót klawiszowy wysyła sygnał `SIGINT` i zatrzymuje bieżący proces w terminalu?
+- [ ] `Ctrl + Z`
+- [ ] `Ctrl + D`
+- [x] `Ctrl + C`
+- [ ] `Ctrl + X`
+> Wyjaśnienie: `Ctrl + C` generuje sygnał przerwania `SIGINT`, powodując natychmiastowe zakończenie większości procesów interaktywnych.
+
+## Uprawnienia i System Plików
+
+### Co oznacza wartość uprawnień $755$ w trybie numerycznym polecenia `chmod`?
+- [x] Właściciel: `rwx`, Grupa: `r-x`, Inni: `r-x`
+- [ ] Właściciel: `rwx`, Grupa: `rw-`, Inni: `r--`
+- [ ] Właściciel: `rw-`, Grupa: `r-x`, Inni: `r-x`
+- [ ] Właściciel: `rwx`, Grupa: `rwx`, Inni: `r-x`
+> Wyjaśnienie: 7 w systemie ósemkowym to $4+2+1$ (`rwx`), a 5 to $4+0+1$ (`r-x`).
+
+### W którym katalogu zgodnie ze standardem FHS znajdują się globalne pliki konfiguracyjne systemu?
+- [ ] `/var`
+- [ ] `/usr`
+- [x] `/etc`
+- [ ] `/opt`
+> Wyjaśnienie: Katalog `/etc` przechowuje pliki konfiguracyjne systemu i zainstalowanych programów.
+
+### Które polecenie służy do zmiany właściciela lub grupy pliku?
+- [ ] `chmod`
+- [x] `chown`
+- [ ] `umask`
+- [ ] `chgrp`
+> Wyjaśnienie: `chown` (*change owner*) zmienia właściciela oraz opcjonalnie grupę pliku lub katalogu.
+
+### Czym charakteryzuje się łącze twarde (*hard link*) w systemie plików Linux?
+- [ ] Jest plikiem zawierającym jedynie ścieżkę do innego pliku
+- [x] Wskazuje bezpośrednio na ten sam węzeł (*inode*) na dysku co plik źródłowy
+- [ ] Przestaje działać natychmiast po usunięciu pierwotnego pliku
+- [ ] Może wskazywać na pliki umieszczone na innych partycjach
+> Wyjaśnienie: Łącze twarde tworzy dodatkowy wpis w katalogu odwołujący się do tego samego numeru inode.
+
+### Który wirtualny plik urządzeń w `/dev` odrzuca wszystkie zapisane do niego dane?
+- [ ] `/dev/zero`
+- [x] `/dev/null`
+- [ ] `/dev/random`
+- [ ] `/dev/tty`
+> Wyjaśnienie: `/dev/null` działa jak „czarna dziura” – ignoruje wszelkie skierowane do niego dane wyjściowe.
+
+## Administracja i Systemd
+
+### Które polecenie służy do sprawdzenia statusu usługi (np. `nginx`) zarządzanej przez `systemd`?
+- [ ] `service nginx info`
+- [x] `systemctl status nginx`
+- [ ] `init status nginx`
+- [ ] `journalctl status nginx`
+> Wyjaśnienie: `systemctl` jest podstawowym narzędziem do sterowania usługami w systemach z `systemd`.
+
+### Jaki sygnał wysyła domyślnie polecenie `kill <PID>` bez podania dodatkowych opcji?
+- [ ] `SIGKILL` (9)
+- [x] `SIGTERM` (15)
+- [ ] `SIGHUP` (1)
+- [ ] `SIGSTOP` (19)
+> Wyjaśnienie: Domyślnym sygnałem jest `SIGTERM` (15), pozwalający procesowi na bezpieczne wyczyszczenie zasobów przed zamknięciem.
+
+### W którym pliku zdefiniowane są punkty automatycznego montowania systemów plików podczas startu systemu?
+- [ ] `/etc/mtab`
+- [x] `/etc/fstab`
+- [ ] `/etc/exports`
+- [ ] `/boot/grub.cfg`
+> Wyjaśnienie: Plik `/etc/fstab` (*file systems table*) zawiera listę partycji i dysków montowanych przy rozruchu.
+
+### Jak w powłoce Bash uruchomić polecenie w tle, aby nie blokowało wiersza poleceń?
+- [ ] Umieszczając na początku `bg`
+- [ ] Umieszczając na końcu `&&`
+- [x] Umieszczając na końcu symbol `&`
+- [ ] Naciśnięciem `Ctrl + C`
+> Wyjaśnienie: Symbol `&` umieszczony na końcu instrukcji uruchamia dany proces w tle (*background*).
+
+### Które narzędzie służy do dynamicznego monitorowania zużycia procesora i pamięci RAM przez procesy w czasie rzeczywistym?
+- [ ] `ps aux`
+- [ ] `free`
+- [x] `top`
+- [ ] `vmstat`
+> Wyjaśnienie: Polecenie `top` wyświetla ciągle odświeżaną listę najbardziej obciążających system procesów.
+
+## Sieci i Zaawansowane
+
+### Który plik służy do lokalnego odwzorowywania nazw domenowych na adresy IP bez zapytania serwera DNS?
+- [x] `/etc/hosts`
+- [ ] `/etc/resolv.conf`
+- [ ] `/etc/hostname`
+- [ ] `/etc/nsswitch.conf`
+> Wyjaśnienie: Plik `/etc/hosts` zawiera statyczną tabelę mapowania nazw domenowych na adresy IP.
+
+### Co powoduje użycie operatora potoku (`|`) pomiędzy dwoma poleceniami (`cmd1 | cmd2`)?
+- [ ] Wykonuje `cmd2` tylko wtedy, gdy `cmd1` zakończy się sukcesem
+- [x] Przekierowuje standardowe wyjście `cmd1` na standardowe wejście `cmd2`
+- [ ] Uruchamia oba polecenia jednocześnie w tle
+- [ ] Zapisuje wynik `cmd1` do pliku o nazwie `cmd2`
+> Wyjaśnienie: Potok (*pipe*) przekazuje strumień danych wyjściowych pierwszego programu jako wejście drugiego.
+
+### Jakie polecenie nadaje plikowi `skrypt.sh` uprawnienia do wykonywania dla wszystkich użytkowników?
+- [ ] `chmod +r skrypt.sh`
+- [x] `chmod +x skrypt.sh`
+- [ ] `chmod 644 skrypt.sh`
+- [ ] `chown +x skrypt.sh`
+> Wyjaśnienie: Flaga `+x` dodaje prawo wykonywania (*executable*).
+
+### Czym jest przestrzeń jądra (*Kernel Space*) w architekturze systemu Linux?
+- [ ] Obszarem dysku przeznaczonym na partycję wymiany (*swap*)
+- [ ] Przestrzenią roboczą zarezerwowaną dla aplikacji użytkownika
+- [x] Chronionym obszarem pamięci RAM przeznaczonym dla jądra i sterowników
+- [ ] Szyfrowanym katalogiem domowym konta `root`
+> Wyjaśnienie: *Kernel space* to uprzywilejowany obszar pamięci posiadający pełny dostęp do sprzętu komputera.
+
+### Która kombinacja flag polecenia `tar` pozwala na utworzenie nowego skompresowanego archiwum algorytmem `gzip`?
+- [ ] `-xvf`
+- [ ] `-tvf`
+- [x] `-czvf`
+- [ ] `-rzvf`
+> Wyjaśnienie: `-c` (*create*), `-z` (*gzip*), `-v` (*verbose*), `-f` (*file*).

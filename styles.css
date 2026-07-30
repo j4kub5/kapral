@@ -91,21 +91,6 @@
     --pico-primary-inverse: var(--palette-inverse);
 }
 
-/* ===== Pico Color Overrides — Dark Mode (Auto) ===== */
-
-@media only screen and (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-        --pico-text-selection-color: var(--palette-selection-dark);
-        --pico-primary: var(--palette-primary-dark);
-        --pico-primary-background: var(--palette-bg-dark);
-        --pico-primary-underline: var(--palette-underline-dark);
-        --pico-primary-hover: var(--palette-hover-dark);
-        --pico-primary-hover-background: var(--palette-hover-bg-dark);
-        --pico-primary-focus: var(--palette-focus-dark);
-        --pico-primary-inverse: var(--palette-inverse);
-    }
-}
-
 /* ===== Pico Color Overrides — Dark Mode (Forced) ===== */
 
 [data-theme="dark"] {
@@ -272,6 +257,8 @@
 
 /* ===== Pack remove button ===== */
 
+.pack-progress-new { color: var(--pico-muted-color); }
+
 .pack-remove-btn {
     position: absolute;
     top: 0.5rem;
@@ -364,6 +351,40 @@
     margin-right: 0.5rem;
     vertical-align: middle;
 }
+
+/* ===== Rank list ===== */
+
+.rank-list {
+    max-width: 400px;
+    margin: 0.75rem auto;
+    border: 1px solid var(--pico-border-color);
+    border-radius: var(--pico-border-radius);
+    overflow: hidden;
+}
+
+.rank-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--pico-border-color);
+}
+
+.rank-item:last-child { border-bottom: none; }
+
+.rank-item.active {
+    font-weight: 700;
+    background-color: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+}
+
+.rank-position {
+    font-size: 0.8rem;
+    color: var(--pico-muted-color);
+    min-width: 1.5rem;
+}
+
+.rotate-180 { transform: rotate(180deg); }
 
 /* ===== Header ===== */
 

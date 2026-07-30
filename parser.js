@@ -10,12 +10,12 @@ function generateQuestionHash(category, questionText) {
 }
 
 // Helper: Create a question object with defaults
-function createQuestionObj(packName, category, questionText) {
+function createQuestionObj(packName, category, rawText) {
     return {
-        id: generateQuestionHash(category, questionText),
+        id: generateQuestionHash(category, rawText),
         packName,
         category: category || 'Ogólne',
-        question: questionText,
+        question: marked.parseInline(rawText),
         imageUrl: null,
         options: [],
         answer: -1,
@@ -91,20 +91,20 @@ function parseMarkdownWithMarked(mdText) {
 
                     text = cleanOption;
                     if (!currentQ.explanation && extractedExp) {
-                        currentQ.explanation = extractedExp;
+                        currentQ.explanation = marked.parseInline(extractedExp);
                     }
                 }
 
                 if (item.checked) {
                     currentQ.answer = currentQ.options.length;
                 }
-                currentQ.options.push(text);
+                currentQ.options.push(marked.parseInline(text));
             });
         }
         // Blockquote (> Explanation)
         else if (token.type === 'blockquote' && currentQ) {
             const cleanExp = token.text.replace(/^Wyjaśnienie:\s*/i, '').trim();
-            currentQ.explanation = cleanExp;
+            currentQ.explanation = marked.parseInline(cleanExp);
         }
     });
 

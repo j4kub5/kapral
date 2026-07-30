@@ -12,12 +12,28 @@ function quizApp() {
         packSearch: '',
         isDark: true,
         username: localStorage.getItem('quiz_username') || '',
-        history: JSON.parse(localStorage.getItem('quiz_history') || '{}'),
+        lastRank: localStorage.getItem('quiz_lastRank') || 'Szeregowy Głąb',
+        history: (() => { try { return JSON.parse(localStorage.getItem('quiz_history') || '{}'); } catch { return {}; } })(),
         toast: { visible: false, message: '', ttl: 0 },
         modal: { visible: false, kind: 'confirm', title: '', message: '', inputValue: '', placeholder: '', confirmLabel: 'OK', cancelLabel: 'Anuluj', resolve: () => {} },
         loading: false,
         palette: localStorage.getItem('quiz_palette') || 'pink',
         helpContent: '',
+        showRankList: false,
+        editingUsername: false,
+        usernameInputValue: '',
+        ranks: [
+            { name: 'Kapral Papkłiz', min: 100 },
+            { name: 'GeneralissiOOOPS', min: 81 },
+            { name: 'Major Leniwa Powieka', min: 71 },
+            { name: 'Kapitan Luźna Wiedza', min: 61 },
+            { name: 'Porucznik Pół-Na-Pół', min: 51 },
+            { name: 'Były Szeregowy Głąb', min: 41 },
+            { name: 'Chorąży, po prostu Chorąży', min: 31 },
+            { name: 'Plutonowy Błąd Pomiarowy', min: 21 },
+            { name: 'Sierżant Gdzie', min: 11 },
+            { name: 'Szeregowy Głąb', min: 0 },
+        ],
 
         initApp() {
             const savedTheme = localStorage.getItem('quiz_theme');
@@ -87,26 +103,28 @@ function quizApp() {
             });
         },
 
-        async promptUsername() {
-            const newName = await this.askPrompt('Wpisz swoją nazwę użytkownika:', this.username);
-            if (newName !== null) {
-                this.username = newName.trim();
-                localStorage.setItem('quiz_username', this.username);
+        saveUsername() {
+            const trimmed = this.usernameInputValue.trim();
+            if (trimmed.length > 20) {
+                this.showToast('Nazwa użytkownika nie może być dłuższa niż 20 znaków.');
+                return;
             }
+            this.username = trimmed;
+            localStorage.setItem('quiz_username', this.username);
+            this.editingUsername = false;
+        },
+
+        cancelEditUsername() {
+            this.editingUsername = false;
         },
 
         getAnsweredCount() {
             return Object.keys(this.history).length;
         },
 
-        get builtinPacksFiltered() {
+        get allPacksFiltered() {
             const q = this.packSearch.toLowerCase();
-            return this.packs.filter(p => p.source === 'builtin' && (!q || p.name.toLowerCase().includes(q)));
-        },
-
-        get userPacksFiltered() {
-            const q = this.packSearch.toLowerCase();
-            return this.packs.filter(p => p.source === 'user' && (!q || p.name.toLowerCase().includes(q)));
+            return this.packs.filter(p => (!q || p.name.toLowerCase().includes(q)));
         },
 
         selectedPacks() {
@@ -127,10 +145,6 @@ function quizApp() {
         selectAllPacks() {
             const allSelected = this.packs.every(p => p.selected);
             this.packs.forEach(p => { p.selected = !allSelected; });
-        },
-
-        setQuestionCount(n) {
-            this.questionCount = n;
         },
 
         async removeUserPack(idx) {
@@ -187,6 +201,7 @@ function quizApp() {
         },
 
         get rankName() {
+            if (!this.activeQuestions.length) return 'Szeregowy Głąb';
             const pct = Math.round((this.batchScore / this.activeQuestions.length) * 100);
             if (pct === 100) return 'Kapral Papkłiz';
             if (pct >= 81) return 'GeneralissiOOOPS';
@@ -198,6 +213,20 @@ function quizApp() {
             if (pct >= 21) return 'Plutonowy Błąd Pomiarowy';
             if (pct >= 11) return 'Sierżant Gdzie';
             return 'Szeregowy Głąb';
+        },
+
+        packProgress(pack) {
+            const answered = pack.questions.filter(q => this.history[q.id]).length;
+            return { answered, total: pack.questions.length, newQ: pack.questions.length - answered };
+        },
+
+        get dashboardGreeting() {
+            const name = this.username || 'Gość';
+            return `Cześć, ${name}! Twój stopień kłizowy to ${this.lastRank}`;
+        },
+
+        get activeRankIndex() {
+            return this.ranks.findIndex(r => this.lastRank === r.name);
         },
 
         selectOption(optIdx) {
@@ -215,6 +244,8 @@ function quizApp() {
                 lastAnsweredAt: new Date().toISOString().split('T')[0]
             };
             localStorage.setItem('quiz_history', JSON.stringify(this.history));
+            this.lastRank = this.rankName;
+            localStorage.setItem('quiz_lastRank', this.lastRank);
         },
 
         getOptionClass(oIdx) {
@@ -245,10 +276,6 @@ function quizApp() {
             } else {
                 this.view = 'results';
             }
-        },
-
-        retryCurrent() {
-            this.startQuizFromPacks();
         },
 
         handleFileUpload(event) {
@@ -372,6 +399,8 @@ function quizApp() {
             if (confirmed) {
                 this.history = {};
                 localStorage.removeItem('quiz_history');
+                this.lastRank = 'Szeregowy Głąb';
+                localStorage.setItem('quiz_lastRank', this.lastRank);
                 this.showToast('Historia została wyczyszczona.');
             }
         }

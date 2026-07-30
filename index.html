@@ -55,10 +55,18 @@
                         </details>
                     </li>
                     <li>
-                        <button class="outline secondary btn-sm" @click="promptUsername()">
+                        <button x-show="!editingUsername" class="outline secondary btn-sm"
+                                @click="editingUsername = true; usernameInputValue = username; $nextTick(() => $refs.usernameInput.focus())">
                             <i class="fa-solid fa-user"></i>
                             <span x-text="username || 'Gość'"></span>
                         </button>
+                        <div x-show="editingUsername" style="display: flex; gap: 0.25rem; align-items: center;">
+                            <input x-ref="usernameInput" x-model="usernameInputValue"
+                                   @keydown.enter="saveUsername()" @keydown.escape="cancelEditUsername()"
+                                   placeholder="Nazwa użytkownika" maxlength="20" style="margin: 0; width: 140px;">
+                            <button class="btn-xs" @click="saveUsername()" title="Zapisz"><i class="fa-solid fa-check"></i></button>
+                            <button class="outline secondary btn-xs" @click="cancelEditUsername()" title="Anuluj"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
                     </li>
                     <li>
                         <button class="outline secondary btn-sm" @click="view = 'help'" title="Instrukcja obsługi">
@@ -91,12 +99,12 @@
                     <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                         <div class="question-presets">
                             <small style="color: var(--pico-muted-color);">Pytań:</small>
-                            <button :class="questionCount === 3 ? 'active' : ''" @click="setQuestionCount(3)">3</button>
-                            <button :class="questionCount === 5 ? 'active' : ''" @click="setQuestionCount(5)">5</button>
-                            <button :class="questionCount === 10 ? 'active' : ''" @click="setQuestionCount(10)">10</button>
-                            <button :class="questionCount === 20 ? 'active' : ''" @click="setQuestionCount(20)">20</button>
-                            <button :class="questionCount === 50 ? 'active' : ''" @click="setQuestionCount(50)">50</button>
-                            <button :class="questionCount === 0 ? 'active' : ''" @click="setQuestionCount(0)">∞</button>
+                            <button :class="questionCount === 3 ? 'active' : ''" @click="questionCount = 3">3</button>
+                            <button :class="questionCount === 5 ? 'active' : ''" @click="questionCount = 5">5</button>
+                            <button :class="questionCount === 10 ? 'active' : ''" @click="questionCount = 10">10</button>
+                            <button :class="questionCount === 20 ? 'active' : ''" @click="questionCount = 20">20</button>
+                            <button :class="questionCount === 50 ? 'active' : ''" @click="questionCount = 50">50</button>
+                            <button :class="questionCount === 0 ? 'active' : ''" @click="questionCount = 0">∞</button>
                         </div>
                         <label>
                             <input type="checkbox" x-model="filterOutAnswered" role="switch">
@@ -113,7 +121,19 @@
         <!-- VIEW 1: DASHBOARD -->
         <main x-show="view === 'dashboard'" x-transition>
             <section class="dashboard-intro" style="text-align: center; margin-bottom: 1.5rem;">
-                <h3>Wybierz pakiety pytań</h3>
+                <h3 style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;" @click="showRankList = !showRankList">
+                    <span x-text="dashboardGreeting"></span>
+                    <i class="fa-solid fa-chevron-down" :class="showRankList ? 'rotate-180' : ''" style="font-size: 0.75rem; transition: transform 0.2s;"></i>
+                </h3>
+                <div x-show="showRankList" x-transition class="rank-list">
+                    <template x-for="(rank, i) in ranks" :key="rank.name">
+                        <div class="rank-item" :class="i === activeRankIndex ? 'active' : ''">
+                            <span class="rank-position" x-text="'#' + (i + 1)"></span>
+                            <span x-text="rank.name"></span>
+                            <small x-text="rank.min + '%'"></small>
+                        </div>
+                    </template>
+                </div>
                 <p style="color: var(--pico-muted-color); max-width: 600px; margin: 0 auto;">
                     Kliknij na pakiet, aby go zaznaczyć. Możesz wybrać kilka pakietów i ćwiczyć z nich jednocześnie.
                 </p>
@@ -139,16 +159,21 @@
             </template>
 
             <!-- Built-in Packs -->
-            <template x-if="!loading && builtinPacksFiltered.length > 0">
+            <template x-if="!loading && allPacksFiltered.some(p => p.source === 'builtin')">
                 <div>
                     <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-cube"></i> Wbudowane</h4>
                     <div class="grid-batches">
-                        <template x-for="(pack, idx) in builtinPacksFiltered" :key="'b-' + pack.name">
+                        <template x-for="pack in allPacksFiltered.filter(p => p.source === 'builtin')" :key="'b-' + pack.name">
                             <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0;" @click="togglePack(packs.indexOf(pack))">
                                 <i class="fa-solid fa-circle-check pack-check"></i>
                                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                                     <span class="pack-badge builtin">Wbudowany</span>
-                                    <small x-text="pack.questions.length + ' pytań'"></small>
+                                    <small>
+                                        <span x-text="packProgress(pack).answered + '/' + packProgress(pack).total"></span>
+                                        <template x-if="packProgress(pack).answered > 0">
+                                            <span> · <span class="pack-progress-new" x-text="packProgress(pack).newQ + ' nowych'"></span></span>
+                                        </template>
+                                    </small>
                                 </div>
                                 <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;" x-text="pack.name"></h4>
                                 <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
@@ -162,7 +187,7 @@
             <div style="margin-top: 1.5rem;">
                 <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user"></i> Moje pakiety</h4>
                 <div class="grid-batches">
-                    <template x-for="(pack, idx) in userPacksFiltered" :key="'u-' + pack.name">
+                    <template x-for="pack in allPacksFiltered.filter(p => p.source === 'user')" :key="'u-' + pack.name">
                         <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0; position: relative;" @click="togglePack(packs.indexOf(pack))">
                             <i class="fa-solid fa-circle-check pack-check"></i>
                             <button class="pack-remove-btn" @click.stop="removeUserPack(packs.indexOf(pack))" title="Usuń pakiet">
@@ -170,7 +195,12 @@
                             </button>
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
                                 <span class="pack-badge user">Własny</span>
-                                <small x-text="pack.questions.length + ' pytań'"></small>
+                                <small>
+                                    <span x-text="packProgress(pack).answered + '/' + packProgress(pack).total"></span>
+                                    <template x-if="packProgress(pack).answered > 0">
+                                        <span> · <span class="pack-progress-new" x-text="packProgress(pack).newQ + ' nowych'"></span></span>
+                                    </template>
+                                </small>
                             </div>
                             <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;" x-text="pack.name"></h4>
                             <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
@@ -190,7 +220,8 @@
         </main>
 
         <!-- VIEW 2: QUIZ GAMEPLAY -->
-        <main x-show="view === 'quiz'" x-transition>
+        <main x-show="view === 'quiz'" x-transition
+              x-init="$watch('view', v => { if (v === 'quiz') $nextTick().then(() => MathJax.typesetPromise?.()) })">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
                 <span class="category-badge" x-text="currentQuestion?.category || 'Ogólne'"></span>
                 <small x-text="'Pytanie ' + (currentPointer + 1) + ' z ' + activeQuestions.length"></small>
@@ -199,7 +230,7 @@
             <progress :value="currentPointer + 1" :max="activeQuestions.length"></progress>
 
             <article style="padding: 1.5rem;" x-effect="currentPointer; $nextTick().then(() => MathJax.typesetPromise?.())">
-                <h3 style="margin-bottom: 1rem; font-size: 1.35rem;" x-text="currentQuestion?.question"></h3>
+                <h3 style="margin-bottom: 1rem; font-size: 1.35rem;" x-html="currentQuestion?.question"></h3>
 
                 <template x-if="currentQuestion?.imageUrl">
                     <div class="img-container">
@@ -217,7 +248,7 @@
                                 :disabled="answeredCurrent">
                             <div>
                                 <strong style="margin-right: 0.5rem;" x-text="['A)', 'B)', 'C)', 'D)', 'E)'][oIdx]"></strong>
-                                <span x-text="opt"></span>
+                                <span x-html="opt"></span>
                             </div>
                             <i class="fa-solid" :class="getOptionIcon(oIdx)"></i>
                         </button>
@@ -230,7 +261,7 @@
                     <div style="font-weight: bold; color: var(--pico-primary); margin-bottom: 0.25rem;">
                         <i class="fa-solid fa-lightbulb"></i> Wyjaśnienie:
                     </div>
-                    <div style="font-size: 0.95rem; color: var(--pico-color);" x-text="currentQuestion?.explanation"></div>
+                    <div style="font-size: 0.95rem; color: var(--pico-color);" x-html="currentQuestion?.explanation"></div>
                 </div>
             </article>
 
@@ -255,14 +286,16 @@
 
                 <div style="font-size: 3.5rem; font-weight: 800; color: var(--pico-primary); margin: 1rem 0 0.5rem 0;" x-text="batchScore + ' / ' + activeQuestions.length"></div>
                 <p style="font-weight: 600;" x-text="Math.round((batchScore / activeQuestions.length) * 100) + '% poprawnych odpowiedzi'"></p>
-                <p style="font-size: 1.25rem; color: var(--pico-primary); margin-top: 0.75rem;">
-                    Twój stopień kłizowy to...<br>
-                    <i class="fa-solid fa-medal"></i> <span x-text="rankName"></span>
-                </p>
+                <div style="margin-top: 1.5rem; padding: 1.5rem; border-radius: var(--pico-border-radius); background-color: var(--pico-primary); color: var(--pico-primary-inverse);">
+                    <div style="font-size: 1rem; opacity: 0.8; margin-bottom: 0.25rem;">Twój stopień kłizowy</div>
+                    <div style="font-size: 2rem; font-weight: 800;">
+                        <i class="fa-solid fa-medal"></i> <span x-text="rankName"></span>
+                    </div>
+                </div>
 
                 <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
                     <button class="outline secondary" @click="showDashboard()">Wróć do menu</button>
-                    <button @click="retryCurrent()">Spróbuj ponownie</button>
+                    <button @click="startQuizFromPacks()">Spróbuj ponownie</button>
                 </div>
             </article>
         </main>
@@ -330,7 +363,7 @@
     </output>
 
     <!-- Modal -->
-    <dialog :open="modal.visible">
+    <dialog x-effect="$el.open = modal.visible" @cancel.prevent="modal.resolve(null); modal.visible = false">
         <article>
             <header>
                 <button aria-label="Close" rel="prev" @click="modal.resolve(null); modal.visible = false"></button>

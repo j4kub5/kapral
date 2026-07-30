@@ -15,20 +15,6 @@
 3. Plik pojawi się jako nowy pakiet zaznaczony do gry.
 4. Format Markdown opisany jest w sekcji poniżej (prompt dla AI).
 
-## 🧮 Wzory matematyczne
-
-Pytania mogą zawierać wzory LaTeX w delimitatorach `$...$`:
-
-- Inline: `$a^2 + b^2 = c^2$`
-- Ułamki: `$\frac{1}{\lambda^2}$`
-- Indeksy: `$x_1, x^2$`
-- Pierwiastki: `$\sqrt{x}$`
-
-Prompt dla AI generujący pytania z wzorami:
-```
-Użyj składni $...$ dla wzorów matematycznych, np. $\frac{a}{b}$.
-```
-
 ## 💾 Jak zapisać stan
 
 - **Automatycznie:** historia odpowiedzi zapisywana jest w pamięci przeglądarki (`localStorage`).
@@ -39,7 +25,8 @@ Użyj składni $...$ dla wzorów matematycznych, np. $\frac{a}{b}$.
 
 Skopiuj poniższy prompt i wklej do ChatGPT / Claude / innego AI, aby wygenerować kompatybilny plik `.md`:
 
-```Wygeneruj plik Markdown z pytaniami quizowymi kompatybilny z aplikacją Kapral Papkłiz.
+````
+Wygeneruj plik Markdown z pytaniami quizowymi kompatybilny z aplikacją Kapral Papkłiz.
 
 Format:
 - H1 (#): Nazwa pakietu
@@ -48,6 +35,7 @@ Format:
 - Opcje odpowiedzi: lista zadań (- [x] poprawna, - [ ] błędna)
 - Opcjonalnie: obrazek ![alt](URL) pod H3
 - Opcjonalnie: wyjaśnienie > Wyjaśnienie: ...
+- Wzory matematyczne: używaj składni $...$ dla wzorów LaTeX, np. $\frac{a}{b}$, $x^2$, $\sqrt{x}$
 
 Przykład:
 # Geografia
@@ -61,5 +49,14 @@ Przykład:
 - [ ] Madryt
 > Wyjaśnienie: Paryż jest stolicą Francji od 987 roku.
 
+### Ile wynosi $\sqrt{144}$?
+- [ ] 10
+- [ ] 11
+- [x] 12
+- [ ] 14
+> Wyjaśnienie: $\sqrt{144} = 12$, ponieważ $12^2 = 144$.
+
 Wygeneruj [LICZBA] pytań z kategorii [KATEGORIA].
-```
+
+Zwróć odpowiedź jako blok kodu markdown.
+````
