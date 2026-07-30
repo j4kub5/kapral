@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kapral Papkłiz - Zrób 10 quiz-pompek</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']]
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+    <script src="parser.js"></script>
+    <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body x-data="quizApp()" x-init="initApp()">
+
+    <div class="container">
+
+        <!-- HEADER / NAVIGATION -->
+        <div class="header-nav">
+            <div style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;" @click="showDashboard()">
+                <img src="logo.png" alt="Kapral Papkłiz" style="height: 6rem; width: auto; border-radius: var(--pico-border-radius);">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.25rem; line-height: 1;">Kapral <span style="color: var(--pico-primary);">Papkłiz</span></h2>
+                    <small style="color: var(--pico-muted-color);">Zrób 10 quiz-pompek!</small>
+                </div>
+            </div>
+            <nav style="margin: 0;">
+                <ul>
+                    <li>
+                        <button class="outline secondary btn-sm" @click="toggleTheme()" :title="isDark ? 'Przełącz na jasny' : 'Przełącz na ciemny'">
+                            <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <details class="dropdown">
+                            <summary class="outline secondary btn-sm" role="button">
+                                <i class="fa-solid fa-palette"></i>
+                            </summary>
+                            <ul>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('pink')"><span class="palette-dot" style="background:#f06292;"></span>Różowy</a></li>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('cyan')"><span class="palette-dot" style="background:#4dd0e1;"></span>Cyan</a></li>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('sand')"><span class="palette-dot" style="background:#a1887f;"></span>Piasek</a></li>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('slate')"><span class="palette-dot" style="background:#78909c;"></span>Łupkowy</a></li>
+                            </ul>
+                        </details>
+                    </li>
+                    <li>
+                        <button class="outline secondary btn-sm" @click="promptUsername()">
+                            <i class="fa-solid fa-user"></i>
+                            <span x-text="username || 'Gość'"></span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="outline secondary btn-sm" @click="view = 'help'" title="Instrukcja obsługi">
+                            <i class="fa-solid fa-circle-question"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="outline btn-sm" @click="view = 'history'">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            <span x-text="getAnsweredCount()"></span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- START PANEL -->
+        <div class="start-panel" x-show="view === 'dashboard' && packs.length > 0" x-transition>
+            <div class="container">
+                <div class="start-panel-inner">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <div>
+                            <strong x-text="selectedPacks().length"></strong> pakietów,
+                            <strong x-text="totalSelectedQuestions()"></strong> pytań
+                        </div>
+                        <button class="outline secondary btn-xs" @click="selectAllPacks()">
+                            <i class="fa-solid fa-check-double"></i> <span x-text="packs.every(p => p.selected) ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'"></span>
+                        </button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <div class="question-presets">
+                            <small style="color: var(--pico-muted-color);">Pytań:</small>
+                            <button :class="questionCount === 3 ? 'active' : ''" @click="setQuestionCount(3)">3</button>
+                            <button :class="questionCount === 5 ? 'active' : ''" @click="setQuestionCount(5)">5</button>
+                            <button :class="questionCount === 10 ? 'active' : ''" @click="setQuestionCount(10)">10</button>
+                            <button :class="questionCount === 20 ? 'active' : ''" @click="setQuestionCount(20)">20</button>
+                            <button :class="questionCount === 50 ? 'active' : ''" @click="setQuestionCount(50)">50</button>
+                            <button :class="questionCount === 0 ? 'active' : ''" @click="setQuestionCount(0)">∞</button>
+                        </div>
+                        <label>
+                            <input type="checkbox" x-model="filterOutAnswered" role="switch">
+                            <i class="fa-solid fa-eye-slash" title="Pomiń odpowiedziane"></i>
+                        </label>
+                        <button class="btn-auto" style="padding: 0.5rem 1.5rem;" :disabled="selectedPacks().length === 0" @click="startQuizFromPacks()">
+                            <i class="fa-solid fa-play"></i> Start
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 1: DASHBOARD -->
+        <main x-show="view === 'dashboard'" x-transition>
+            <section class="dashboard-intro" style="text-align: center; margin-bottom: 1.5rem;">
+                <h3>Wybierz pakiety pytań</h3>
+                <p style="color: var(--pico-muted-color); max-width: 600px; margin: 0 auto;">
+                    Kliknij na pakiet, aby go zaznaczyć. Możesz wybrać kilka pakietów i ćwiczyć z nich jednocześnie.
+                </p>
+            </section>
+
+            <!-- Search & Filter -->
+            <article>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 200px;">
+                        <input type="search" x-model="packSearch" placeholder="Szukaj pakietów..." style="margin: 0; flex: 1;">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="outline secondary btn-sm" @click="loadBuiltinPacks()">
+                            <i class="fa-solid fa-rotate"></i> <span class="hide-on-mobile">Przeładuj</span>
+                        </button>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Loading indicator -->
+            <template x-if="loading">
+                <article aria-busy="true">Ładowanie pakietów pytań...</article>
+            </template>
+
+            <!-- Built-in Packs -->
+            <template x-if="!loading && builtinPacksFiltered.length > 0">
+                <div>
+                    <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-cube"></i> Wbudowane</h4>
+                    <div class="grid-batches">
+                        <template x-for="(pack, idx) in builtinPacksFiltered" :key="'b-' + pack.name">
+                            <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0;" @click="togglePack(packs.indexOf(pack))">
+                                <i class="fa-solid fa-circle-check pack-check"></i>
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <span class="pack-badge builtin">Wbudowany</span>
+                                    <small x-text="pack.questions.length + ' pytań'"></small>
+                                </div>
+                                <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;" x-text="pack.name"></h4>
+                                <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- User Packs -->
+            <div style="margin-top: 1.5rem;">
+                <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user"></i> Moje pakiety</h4>
+                <div class="grid-batches">
+                    <template x-for="(pack, idx) in userPacksFiltered" :key="'u-' + pack.name">
+                        <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0; position: relative;" @click="togglePack(packs.indexOf(pack))">
+                            <i class="fa-solid fa-circle-check pack-check"></i>
+                            <button class="pack-remove-btn" @click.stop="removeUserPack(packs.indexOf(pack))" title="Usuń pakiet">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                <span class="pack-badge user">Własny</span>
+                                <small x-text="pack.questions.length + ' pytań'"></small>
+                            </div>
+                            <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;" x-text="pack.name"></h4>
+                            <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
+                        </article>
+                    </template>
+
+                    <!-- Upload card -->
+                    <article style="padding: 1.25rem; margin: 0 0 1.5rem 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;">
+                        <label style="margin: 0; cursor: pointer; text-align: center; color: var(--pico-muted-color);">
+                            <i class="fa-solid fa-plus" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <span>Wgraj plik (.md / .json)</span>
+                            <input type="file" @change="handleFileUpload($event)" accept=".md,.json" style="display: none;">
+                        </label>
+                    </article>
+                </div>
+            </div>
+        </main>
+
+        <!-- VIEW 2: QUIZ GAMEPLAY -->
+        <main x-show="view === 'quiz'" x-transition>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <span class="category-badge" x-text="currentQuestion?.category || 'Ogólne'"></span>
+                <small x-text="'Pytanie ' + (currentPointer + 1) + ' z ' + activeQuestions.length"></small>
+            </div>
+
+            <progress :value="currentPointer + 1" :max="activeQuestions.length"></progress>
+
+            <article style="padding: 1.5rem;" x-effect="currentPointer; $nextTick().then(() => MathJax.typesetPromise?.())">
+                <h3 style="margin-bottom: 1rem; font-size: 1.35rem;" x-text="currentQuestion?.question"></h3>
+
+                <template x-if="currentQuestion?.imageUrl">
+                    <div class="img-container">
+                        <img :src="currentQuestion.imageUrl"
+                             :alt="currentQuestion.question"
+                             @error="handleImageError($event)">
+                    </div>
+                </template>
+
+                <div style="margin-top: 1.25rem;">
+                    <template x-for="(opt, oIdx) in currentQuestion?.options" :key="oIdx">
+                        <button class="option-button"
+                                :class="getOptionClass(oIdx)"
+                                @click="selectOption(oIdx)"
+                                :disabled="answeredCurrent">
+                            <div>
+                                <strong style="margin-right: 0.5rem;" x-text="['A)', 'B)', 'C)', 'D)', 'E)'][oIdx]"></strong>
+                                <span x-text="opt"></span>
+                            </div>
+                            <i class="fa-solid" :class="getOptionIcon(oIdx)"></i>
+                        </button>
+                    </template>
+                </div>
+
+                <div x-show="answeredCurrent && currentQuestion?.explanation"
+                     x-transition
+                     style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--pico-border-radius); background-color: rgba(0, 0, 0, 0.1); border-left: 4px solid var(--pico-primary);">
+                    <div style="font-weight: bold; color: var(--pico-primary); margin-bottom: 0.25rem;">
+                        <i class="fa-solid fa-lightbulb"></i> Wyjaśnienie:
+                    </div>
+                    <div style="font-size: 0.95rem; color: var(--pico-color);" x-text="currentQuestion?.explanation"></div>
+                </div>
+            </article>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                <button class="outline secondary btn-auto" @click="showDashboard()">
+                    <i class="fa-solid fa-arrow-left"></i> Przerwij
+                </button>
+                <button class="btn-auto" :disabled="!answeredCurrent" @click="nextQuestion()">
+                    <span>Następne</span> <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </main>
+
+        <!-- VIEW 3: RESULTS SUMMARY -->
+        <main x-show="view === 'results'" x-transition style="text-align: center; max-width: 600px; margin: 0 auto;">
+            <article style="padding: 2rem;">
+                <div style="font-size: 3rem; color: var(--pico-primary); margin-bottom: 1rem;">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <h2>Seria zakończona!</h2>
+                <p style="color: var(--pico-muted-color);">Oto Twój wynik w tym podejściu:</p>
+
+                <div style="font-size: 3.5rem; font-weight: 800; color: var(--pico-primary); margin: 1rem 0 0.5rem 0;" x-text="batchScore + ' / ' + activeQuestions.length"></div>
+                <p style="font-weight: 600;" x-text="Math.round((batchScore / activeQuestions.length) * 100) + '% poprawnych odpowiedzi'"></p>
+                <p style="font-size: 1.25rem; color: var(--pico-primary); margin-top: 0.75rem;">
+                    Twój stopień kłizowy to...<br>
+                    <i class="fa-solid fa-medal"></i> <span x-text="rankName"></span>
+                </p>
+
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+                    <button class="outline secondary" @click="showDashboard()">Wróć do menu</button>
+                    <button @click="retryCurrent()">Spróbuj ponownie</button>
+                </div>
+            </article>
+        </main>
+
+        <!-- VIEW 4: HISTORY AND STATS -->
+        <main x-show="view === 'history'" x-transition>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3>Historia i Statystyki</h3>
+                <button class="outline secondary btn-auto" @click="showDashboard()">
+                    <i class="fa-solid fa-xmark"></i> Zamknij
+                </button>
+            </div>
+
+            <article>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <strong>Gracz:</strong> <span x-text="username || 'Gość'"></span><br>
+                        <strong>Rozwiązane pytania:</strong> <span x-text="getAnsweredCount()"></span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="outline btn-auto btn-sm" @click="exportStats()">
+                            <i class="fa-solid fa-download"></i> Pobierz JSON
+                        </button>
+                        <button class="outline secondary btn-auto btn-sm" @click="resetHistory()">
+                            <i class="fa-solid fa-trash-can"></i> Wyczyść historię
+                        </button>
+                    </div>
+                </div>
+
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <template x-for="(item, qId) in history" :key="qId">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--pico-border-color);">
+                            <div>
+                                <small style="font-family: monospace;" x-text="qId"></small>
+                                <div style="font-size: 0.85rem; color: var(--pico-muted-color);" x-text="'Ostatnia odpowiedź: ' + item.lastAnsweredAt"></div>
+                            </div>
+                            <div>
+                                <span :style="item.correct ? 'color: #10b981;' : 'color: #ef4444;'" style="font-weight: bold;" x-text="item.correct ? 'Poprawna' : 'Błędna'"></span>
+                            </div>
+                        </div>
+                    </template>
+                    <template x-if="getAnsweredCount() === 0">
+                        <p style="text-align: center; color: var(--pico-muted-color); margin: 2rem 0;">Brak zapisanej historii odpowiedzi.</p>
+                    </template>
+                </div>
+            </article>
+        </main>
+
+        <!-- VIEW 5: HELP -->
+        <main x-show="view === 'help'" x-transition>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3>Instrukcja obsługi</h3>
+                <button class="outline secondary btn-auto" @click="showDashboard()">
+                    <i class="fa-solid fa-xmark"></i> Zamknij
+                </button>
+            </div>
+            <article class="help-section" x-html="helpContent"></article>
+        </main>
+
+    </div>
+
+    <!-- Toast -->
+    <output class="toast" aria-live="polite" x-show="toast.visible" x-transition>
+        <span x-text="toast.message"></span>
+    </output>
+
+    <!-- Modal -->
+    <dialog :open="modal.visible">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev" @click="modal.resolve(null); modal.visible = false"></button>
+                <p><strong x-text="modal.title"></strong></p>
+            </header>
+            <input x-show="modal.kind === 'prompt'" x-model="modal.inputValue" :placeholder="modal.placeholder">
+            <p x-show="modal.kind === 'confirm'" x-text="modal.message"></p>
+            <footer>
+                <button class="secondary" @click="modal.resolve(null); modal.visible = false" x-text="modal.cancelLabel || 'Anuluj'"></button>
+                <button @click="modal.resolve(modal.kind === 'prompt' ? modal.inputValue : true); modal.visible = false" x-text="modal.confirmLabel || 'OK'"></button>
+            </footer>
+        </article>
+    </dialog>
+
+</body>
+</html>
