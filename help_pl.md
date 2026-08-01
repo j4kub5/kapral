@@ -13,11 +13,13 @@
 1. Przygotuj plik w formacie `.md` (Markdown) lub `.json`.
 2. W sekcji „Moje pakiety" kliknij „Wgraj plik".
 3. Plik pojawi się jako nowy pakiet zaznaczony do gry.
-4. Format Markdown opisany jest w sekcji poniżej (prompt dla AI).
+4. Alternatywnie: kliknij „Wklej markdown" i wklej treść pytań bezpośrednio — zostanie przetworzona na pakiet.
+5. Format Markdown opisany jest w sekcji poniżej (prompt dla AI).
 
 ## 💾 Jak zapisać stan
 
 - **Automatycznie:** historia odpowiedzi zapisywana jest w pamięci przeglądarki (`localStorage`).
+- **Twoje pakiety:** pakiety wgrane lub wklejone w sekcji „Moje pakiety" zapisywane są automatycznie i wracają po odświeżeniu strony.
 - **Eksport:** w widoku Historia kliknij „Pobierz JSON", aby zapisać plik z historią.
 - **Uwaga:** wyczyszczenie danych przeglądarki usunie historię. Regularnie eksportuj kopię!
 

@@ -396,6 +396,15 @@
     padding: 1rem 0;
     border-bottom: 1px solid var(--pico-border-color);
     margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.version {
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    color: var(--pico-muted-color);
+    font-size: 0.75rem;
 }
 
 /* ===== Help view ===== */
@@ -457,4 +466,29 @@
     .dashboard-intro {
         display: none;
     }
+}
+
+/* Timer bar */
+.timer-bar {
+    width: 100%;
+    height: 6px;
+    background-color: var(--pico-border-color);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.timer-fill {
+    height: 100%;
+    background-color: #10b981;
+    border-radius: 3px;
+    transition: width 1s linear, background-color 0.3s ease;
+}
+
+.timer-fill.timer-warning {
+    background-color: #f59e0b;
+}
+
+.timer-fill.timer-critical {
+    background-color: #ef4444;
 }

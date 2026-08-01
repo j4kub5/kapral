@@ -86,7 +86,7 @@ function parseMarkdownWithMarked(mdText) {
                 if (quoteIdx !== -1) {
                     const cleanOption = text.substring(0, quoteIdx).trim();
                     const extractedExp = text.substring(quoteIdx + 1)
-                        .replace(/^Wyjaśnienie:\s*/i, '')
+                        .replace(/^(Wyjaśnienie|Explanation):\s*/i, '')
                         .trim();
 
                     text = cleanOption;
@@ -103,7 +103,7 @@ function parseMarkdownWithMarked(mdText) {
         }
         // Blockquote (> Explanation)
         else if (token.type === 'blockquote' && currentQ) {
-            const cleanExp = token.text.replace(/^Wyjaśnienie:\s*/i, '').trim();
+            const cleanExp = token.text.replace(/^(Wyjaśnienie|Explanation):\s*/i, '').trim();
             currentQ.explanation = marked.parseInline(cleanExp);
         }
     });
