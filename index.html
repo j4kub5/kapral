@@ -17,8 +17,10 @@
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="translations.js"></script>
     <script src="parser.js"></script>
+    <script src="mp.js"></script>
     <script src="app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
@@ -75,6 +77,12 @@
                         </div>
                     </li>
                     <li>
+                        <button class="outline btn-sm" @click="view = 'multiplayer'">
+                            <i class="fa-solid fa-users"></i>
+                            <span class="hide-on-mobile" x-text="t('multiplayer')"></span>
+                        </button>
+                    </li>
+                    <li>
                         <button class="outline secondary btn-sm" @click="view = 'help'" :title="t('helpTitle')">
                             <i class="fa-solid fa-circle-question"></i>
                         </button>
@@ -87,7 +95,12 @@
                     </li>
                 </ul>
             </nav>
-            <small class="version" x-text="'v' + APP_VERSION"></small>
+            <small class="version">
+                <a href="https://github.com/j4kub5/kapral" target="_blank" rel="noopener" class="github-link" title="GitHub">
+                    <i class="fa-brands fa-github"></i>
+                </a>
+                <span x-text="'v' + APP_VERSION"></span>
+            </small>
         </div>
 
         <!-- START PANEL -->
@@ -104,36 +117,32 @@
                         </button>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        <div class="question-presets">
+                        <label style="margin: 0; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
                             <small style="color: var(--pico-muted-color);" x-text="t('questionsCount')"></small>
-                            <button :class="questionCount === 3 ? 'active' : ''" @click="questionCount = 3">3</button>
-                            <button :class="questionCount === 5 ? 'active' : ''" @click="questionCount = 5">5</button>
-                            <button :class="questionCount === 10 ? 'active' : ''" @click="questionCount = 10">10</button>
-                            <button :class="questionCount === 20 ? 'active' : ''" @click="questionCount = 20">20</button>
-                            <button :class="questionCount === 50 ? 'active' : ''" @click="questionCount = 50">50</button>
-                            <button :class="questionCount === 0 ? 'active' : ''" @click="questionCount = 0">∞</button>
-                        </div>
+                            <select x-model.number="questionCount" style="width: auto; margin: 0;">
+                                <option :value="3">3</option>
+                                <option :value="5">5</option>
+                                <option :value="10">10</option>
+                                <option :value="20">20</option>
+                                <option :value="50">50</option>
+                                <option :value="0">∞</option>
+                            </select>
+                        </label>
                         <label>
                             <input type="checkbox" x-model="filterOutAnswered" role="switch">
                             <i class="fa-solid fa-eye-slash" :title="t('skipAnswered')"></i>
                         </label>
                         <div class="timer-group">
-                            <label>
-                                <input type="checkbox" :checked="timerEnabled" @change="toggleTimer()" role="switch">
+                            <label style="margin: 0; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
                                 <i class="fa-solid fa-stopwatch" :title="t('timerOn')"></i>
-                            </label>
-                            <div x-show="timerEnabled" style="display: flex; align-items: center; gap: 0.25rem;">
                                 <small style="color: var(--pico-muted-color);" x-text="t('timePerQuestion')"></small>
-                                <div class="question-presets">
-                                    <button :class="timerDuration === 10 ? 'active' : ''" @click="setTimerDuration(10)">10s</button>
-                                    <button :class="timerDuration === 15 ? 'active' : ''" @click="setTimerDuration(15)">15s</button>
-                                    <button :class="timerDuration === 20 ? 'active' : ''" @click="setTimerDuration(20)">20s</button>
-                                    <button :class="timerDuration === 30 ? 'active' : ''" @click="setTimerDuration(30)">30s</button>
-                                </div>
-                            </div>
-                            <label x-show="timerEnabled">
-                                <input type="checkbox" :checked="penaltyEnabled" @change="togglePenalty()" role="switch">
-                                <small x-text="t('penaltyLabel')"></small>
+                                <select x-model.number="timerDuration" @change="setTimerDuration($event.target.value)" style="width: auto; margin: 0;">
+                                    <option :value="0">∞</option>
+                                    <option :value="10">10s</option>
+                                    <option :value="15">15s</option>
+                                    <option :value="20">20s</option>
+                                    <option :value="30">30s</option>
+                                </select>
                             </label>
                         </div>
                         <button class="btn-auto" style="padding: 0.5rem 1.5rem;" :disabled="selectedPacks().length === 0" @click="startQuizFromPacks()">
@@ -182,39 +191,17 @@
                 <article aria-busy="true" x-text="t('loading')"></article>
             </template>
 
-            <!-- Built-in Packs -->
-            <template x-if="!loading && allPacksFiltered.some(p => p.source === 'builtin')">
-                <div>
-                    <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-cube"></i> <span x-text="t('builtin')"></span></h4>
-                    <div class="grid-batches">
-                        <template x-for="pack in allPacksFiltered.filter(p => p.source === 'builtin')" :key="'b-' + pack.name">
-                            <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0;" @click="togglePack(packs.indexOf(pack))">
-                                <i class="fa-solid fa-circle-check pack-check"></i>
-                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                                    <span class="pack-badge builtin" x-text="t('builtinBadge')"></span>
-                                    <small>
-                                        <span x-text="packProgress(pack).answered + '/' + packProgress(pack).total"></span>
-                                        <template x-if="packProgress(pack).answered > 0">
-                                            <span> · <span class="pack-progress-new" x-text="packProgress(pack).newQ + ' ' + t('newCount')"></span></span>
-                                        </template>
-                                    </small>
-                                </div>
-                                <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;" x-text="pack.name"></h4>
-                                <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
-                            </article>
-                        </template>
-                    </div>
-                </div>
-            </template>
-
             <!-- User Packs -->
-            <div style="margin-top: 1.5rem;">
+            <div>
                 <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user"></i> <span x-text="t('myPacks')"></span></h4>
                 <div class="grid-batches">
                     <template x-for="pack in allPacksFiltered.filter(p => p.source === 'user')" :key="'u-' + pack.name">
-                        <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0; position: relative;" @click="togglePack(packs.indexOf(pack))">
+                        <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0; position: relative;" @click="togglePack(pack)">
                             <i class="fa-solid fa-circle-check pack-check"></i>
-                            <button class="pack-remove-btn" @click.stop="removeUserPack(packs.indexOf(pack))" :title="t('removePack')">
+                            <button class="pack-download-btn" @click.stop="exportPackAsMarkdown(pack)" :title="t('downloadPack')">
+                                <i class="fa-solid fa-download"></i>
+                            </button>
+                            <button class="pack-remove-btn" @click.stop="removeUserPack(pack)" :title="t('removePack')">
                                 <i class="fa-solid fa-xmark"></i>
                             </button>
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
@@ -236,7 +223,7 @@
                         <label style="margin: 0; cursor: pointer; text-align: center; color: var(--pico-muted-color);">
                             <i class="fa-solid fa-plus" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
                             <span x-text="t('uploadLabel')"></span>
-                            <input type="file" @change="handleFileUpload($event)" accept=".md,.json" style="display: none;">
+                            <input type="file" @change="handleFileUpload($event)" accept=".md" style="display: none;">
                         </label>
                     </article>
 
@@ -249,6 +236,31 @@
                     </article>
                 </div>
             </div>
+
+            <!-- Built-in Packs -->
+            <template x-if="!loading && allPacksFiltered.some(p => p.source === 'builtin')">
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-cube"></i> <span x-text="t('builtin')"></span></h4>
+                    <div class="grid-batches">
+                        <template x-for="pack in allPacksFiltered.filter(p => p.source === 'builtin')" :key="'b-' + pack.name">
+                            <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0;" @click="togglePack(pack)">
+                                <i class="fa-solid fa-circle-check pack-check"></i>
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <span class="pack-badge builtin" x-text="t('builtinBadge')"></span>
+                                    <small>
+                                        <span x-text="packProgress(pack).answered + '/' + packProgress(pack).total"></span>
+                                        <template x-if="packProgress(pack).answered > 0">
+                                            <span> · <span class="pack-progress-new" x-text="packProgress(pack).newQ + ' ' + t('newCount')"></span></span>
+                                        </template>
+                                    </small>
+                                </div>
+                                <h4 style="margin-bottom: 0.5rem; font-size: 1.1rem;" x-text="pack.name"></h4>
+                                <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
+                            </article>
+                        </template>
+                    </div>
+                </div>
+            </template>
         </main>
 
         <!-- VIEW 2: QUIZ GAMEPLAY -->
@@ -282,14 +294,14 @@
                 <div style="margin-top: 1.25rem;">
                     <template x-for="(opt, oIdx) in currentQuestion?.options" :key="oIdx">
                         <button class="option-button"
-                                :class="getOptionClass(oIdx)"
+                                :class="getOptionState(oIdx).cls"
                                 @click="selectOption(oIdx)"
                                 :disabled="answeredCurrent">
                             <div>
                                 <strong style="margin-right: 0.5rem;" x-text="['A)', 'B)', 'C)', 'D)', 'E)'][oIdx]"></strong>
                                 <span x-html="opt"></span>
                             </div>
-                            <i class="fa-solid" :class="getOptionIcon(oIdx)"></i>
+                            <i class="fa-solid" :class="getOptionState(oIdx).icon"></i>
                         </button>
                     </template>
                 </div>
@@ -305,9 +317,14 @@
             </article>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-                <button class="outline secondary btn-auto" @click="showDashboard()">
-                    <i class="fa-solid fa-arrow-left"></i> <span x-text="t('cancel')"></span>
-                </button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="outline secondary btn-auto" @click="showDashboard()">
+                        <i class="fa-solid fa-arrow-left"></i> <span x-text="t('cancel')"></span>
+                    </button>
+                    <button class="outline secondary btn-auto" x-show="currentPointer > 0" @click="previousQuestion()">
+                        <i class="fa-solid fa-chevron-left"></i> <span x-text="t('prev')"></span>
+                    </button>
+                </div>
                 <button class="btn-auto" :disabled="!answeredCurrent" @click="nextQuestion()">
                     <span x-text="t('next')"></span> <i class="fa-solid fa-chevron-right"></i>
                 </button>
@@ -343,6 +360,243 @@
             </article>
         </main>
 
+        <!-- VIEW 3.5: MULTIPLAYER -->
+        <main x-show="view === 'multiplayer'" x-transition>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3><i class="fa-solid fa-users"></i> <span x-text="t('multiplayer')"></span></h3>
+                <button class="outline secondary btn-auto" @click="leaveMultiplayer()">
+                    <i class="fa-solid fa-xmark"></i> <span x-text="t('close')"></span>
+                </button>
+            </div>
+
+            <!-- Connection -->
+            <article x-show="mpScreen === 'connect'" x-transition>
+                <h4 x-text="t('mpConnectTitle')"></h4>
+                <p style="color: var(--pico-muted-color);" x-text="t('mpConnectHint')"></p>
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <input x-model="mpServer" :placeholder="t('mpServerPlaceholder')" style="margin: 0; flex: 1; min-width: 220px;" @keydown.enter="connectServer()">
+                    <button class="btn-auto" @click="connectServer()">
+                        <i class="fa-solid fa-plug"></i> <span x-text="t('mpConnect')"></span>
+                    </button>
+                </div>
+            </article>
+
+            <!-- Menu (create / join) -->
+            <div x-show="mpScreen === 'menu'" x-transition>
+                <article>
+                    <h4 x-text="t('mpMenuTitle')"></h4>
+                    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                        <input x-model="mpRoomName" :placeholder="t('mpRoomName')" maxlength="30" style="margin: 0; flex: 1; min-width: 180px;">
+                        <button class="outline btn-sm" @click="mpRoomName = mpRandomRoomName()" :title="t('mpShuffleRoomName')" :aria-label="t('mpShuffleRoomName')">
+                            <i class="fa-solid fa-dice"></i>
+                        </button>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                        <input x-model="mpNickname" :placeholder="t('mpNickname')" maxlength="20" style="margin: 0; flex: 1; min-width: 180px;" @input="mpPersistNickname()">
+                        <button class="outline btn-sm" @click="mpNickname = mpRandomNickname()" :title="t('mpShuffleNickname')" :aria-label="t('mpShuffleNickname')">
+                            <i class="fa-solid fa-dice"></i>
+                        </button>
+                        <button class="outline" @click="createRoom()">
+                            <i class="fa-solid fa-plus"></i> <span x-text="t('mpCreateRoom')"></span>
+                        </button>
+                        <span style="color: var(--pico-muted-color);" x-text="t('mpOr')"></span>
+                        <input x-model="mpJoinCode" :placeholder="t('mpRoomCode')" maxlength="6" style="margin: 0; width: 110px; text-transform: uppercase;">
+                        <button class="outline" @click="joinRoom()">
+                            <i class="fa-solid fa-right-to-bracket"></i> <span x-text="t('mpJoinRoom')"></span>
+                        </button>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Lobby -->
+            <div x-show="mpScreen === 'lobby'" x-transition>
+                <article>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <small style="color: var(--pico-muted-color);" x-text="t('mpRoomName')"></small>
+                            <div style="font-size: 2rem; font-weight: 800; color: var(--pico-primary);" x-text="mpRoomName"></div>
+                            <div style="font-weight: 700; letter-spacing: 0.2em; color: var(--pico-color);" x-text="mpCode"></div>
+                        </div>
+                        <div style="text-align: right;">
+                            <small style="color: var(--pico-muted-color);" x-text="t('mpYouAre')"></small>
+                            <div style="font-weight: 700;" x-text="mpIsHost ? t('mpHost') : t('mpPlayer')"></div>
+                        </div>
+                    </div>
+
+                    <!-- Host: QR code -->
+                    <template x-if="mpIsHost && mpQr">
+                        <div style="text-align: center; margin: 1rem 0;">
+                            <small style="color: var(--pico-muted-color);" x-text="t('mpQrHint')"></small>
+                            <div style="margin-top: 0.5rem; background: #fff; padding: 0.5rem; border-radius: var(--pico-border-radius); display: inline-block; line-height: 0;">
+                                <img :src="mpQr" width="200" height="200" :alt="t('mpQrHint')">
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Host: upload pack -->
+                    <div x-show="mpIsHost" style="margin-bottom: 1rem;">
+                        <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 1rem;">
+                            <input type="checkbox" x-model="mpHostPlays" @change="mpSetHostPlays()" style="margin: 0;">
+                            <span x-text="t('mpHostPlays')"></span>
+                        </label>
+                        <template x-if="!mpQuestionCount">
+                            <div>
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <button class="outline" @click="mpUploadMode = 'file'">
+                                        <i class="fa-solid fa-file-arrow-up"></i> <span x-text="t('mpUploadPack')"></span>
+                                    </button>
+                                    <button class="outline" @click="mpUploadMode = 'paste'">
+                                        <i class="fa-solid fa-clipboard"></i> <span x-text="t('mpPastePack')"></span>
+                                    </button>
+                                </div>
+                                <div x-show="mpUploadMode === 'file'" style="margin-top: 0.75rem;">
+                                    <input type="file" @change="mpUploadFile($event)" accept=".md" style="margin: 0;">
+                                </div>
+                                <div x-show="mpUploadMode === 'paste'" style="margin-top: 0.75rem;">
+                                    <textarea x-model="mpPasteText" :placeholder="t('mpPastePlaceholder')" rows="6" style="margin-bottom: 0.5rem;"></textarea>
+                                    <button class="btn-sm" @click="mpSendPaste()">
+                                        <i class="fa-solid fa-check"></i> <span x-text="t('save')"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="mpQuestionCount" style="background: var(--pico-card-background-color); padding: 0.75rem 1rem; border-radius: var(--pico-border-radius);">
+                            <span x-text="t('mpPackReady', { name: mpPackName, count: mpQuestionCount })"></span>
+                        </div>
+                    </div>
+
+                    <!-- Players -->
+                    <h5 style="margin-bottom: 0.5rem;" x-text="t('mpPlayers') + ' (' + mpPlayers.length + ')'"></h5>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                        <template x-for="(p, i) in mpPlayers" :key="i">
+                            <span class="mp-player-chip" :class="p.isHost ? 'host' : ''">
+                                <i class="fa-solid" :class="p.isHost ? 'fa-crown' : 'fa-user'"></i>
+                                <span x-text="p.nickname"></span>
+                                <small x-text="p.score"></small>
+                            </span>
+                        </template>
+                    </div>
+
+                    <!-- Host: start -->
+                    <div x-show="mpIsHost">
+                        <template x-if="mpQuestionCount">
+                            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                                <label style="margin: 0; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
+                                    <small style="color: var(--pico-muted-color);" x-text="t('questionsCount')"></small>
+                                    <select x-model.number="mpStartCount" style="width: auto; margin: 0;">
+                                        <option :value="5">5</option>
+                                        <option :value="10" selected>10</option>
+                                        <option :value="20">20</option>
+                                        <option :value="50">50</option>
+                                    </select>
+                                </label>
+                                <label style="margin: 0; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;">
+                                    <small style="color: var(--pico-muted-color);" x-text="t('timePerQuestion')"></small>
+                                    <select x-model.number="mpTimePerQuestion" style="width: auto; margin: 0;">
+                                        <option :value="10">10s</option>
+                                        <option :value="15" selected>15s</option>
+                                        <option :value="20">20s</option>
+                                        <option :value="30">30s</option>
+                                    </select>
+                                </label>
+                                <button class="btn-auto" @click="mpStartGame()" :disabled="mpPlayers.length < (mpHostPlays ? 2 : 1)">
+                                    <i class="fa-solid fa-play"></i> <span x-text="t('mpStartGame')"></span>
+                                </button>
+                            </div>
+                        </template>
+                        <p x-show="!mpQuestionCount" style="color: var(--pico-muted-color); margin: 0;" x-text="t('mpUploadHint')"></p>
+                    </div>
+                    <p x-show="!mpIsHost" style="color: var(--pico-muted-color); margin: 0;" x-text="t('mpWaitingHost')"></p>
+                </article>
+            </div>
+
+            <!-- Game (question) -->
+            <div x-show="mpScreen === 'game'" x-transition>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span class="category-badge" x-text="mpCurrentQuestion?.category || ''"></span>
+                    <small x-text="t('questionOf', { n: mpIndex + 1, total: mpTotal })"></small>
+                </div>
+                <div style="text-align: center; margin-bottom: 0.25rem;">
+                    <small style="color: var(--pico-muted-color);" x-text="mpRoomName + ' · ' + mpCode"></small>
+                </div>
+                <progress :value="mpIndex + 1" :max="mpTotal"></progress>
+
+                <div class="timer-bar">
+                    <div class="timer-fill" :class="mpTimeLeft <= 5 ? 'timer-critical' : mpTimeLeft <= 10 ? 'timer-warning' : ''" :style="`width: ${(mpTimeLeft / mpTimePerQuestion) * 100}%`"></div>
+                </div>
+                <div style="text-align: right; margin-top: 0.25rem;">
+                    <small :style="mpTimeLeft <= 5 ? 'color: #ef4444; font-weight: bold;' : 'color: var(--pico-muted-color);'" x-text="mpTimeLeft + t('seconds')"></small>
+                </div>
+
+                <article style="padding: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; font-size: 1.35rem;" x-html="mpCurrentQuestion?.question"></h3>
+
+                    <template x-if="mpCurrentQuestion?.imageUrl">
+                        <div class="img-container">
+                            <img :src="mpCurrentQuestion.imageUrl" :alt="mpCurrentQuestion.question" @error="handleImageError($event)">
+                        </div>
+                    </template>
+
+                    <div style="margin-top: 1.25rem;">
+                        <template x-for="(opt, oIdx) in mpCurrentQuestion?.options" :key="oIdx">
+                            <button class="option-button"
+                                    :class="mpOptionState(oIdx).cls"
+                                    @click="mpAnswer(oIdx)"
+                                    :disabled="mpAnswered || mpRevealed || (mpIsHost && !mpHostPlays)">
+                                <div>
+                                    <strong style="margin-right: 0.5rem;" x-text="['A)', 'B)', 'C)', 'D)', 'E)'][oIdx]"></strong>
+                                    <span x-html="opt"></span>
+                                </div>
+                                <i class="fa-solid" :class="mpOptionState(oIdx).icon"></i>
+                            </button>
+                        </template>
+                    </div>
+
+                    <div x-show="mpRevealed && mpExplanation"
+                         x-transition
+                         style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--pico-border-radius); background-color: rgba(0, 0, 0, 0.1); border-left: 4px solid var(--pico-primary);">
+                        <div style="font-weight: bold; color: var(--pico-primary); margin-bottom: 0.25rem;">
+                            <i class="fa-solid fa-lightbulb"></i> <span x-text="t('explanation') + ':'"></span>
+                        </div>
+                        <div style="font-size: 0.95rem; color: var(--pico-color);" x-html="mpExplanation"></div>
+                    </div>
+
+                    <div x-show="mpAnswered && !mpRevealed" style="margin-top: 1.25rem; text-align: center;">
+                        <small style="color: var(--pico-muted-color);" x-text="t('mpWaitingOthers')"></small>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Results -->
+            <div x-show="mpScreen === 'results'" x-transition style="max-width: 600px; margin: 0 auto;">
+                <article style="padding: 2rem; text-align: center;">
+                    <div style="font-size: 3rem; color: var(--pico-primary); margin-bottom: 1rem;">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <h2 x-text="t('mpGameOver')"></h2>
+                    <div style="margin-top: 1.5rem;">
+                        <template x-for="(p, i) in mpResults" :key="i">
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; margin-bottom: 0.5rem; border-radius: var(--pico-border-radius); background: var(--pico-card-background-color);">
+                                <span>
+                                    <strong x-text="'#' + (i + 1)"></strong>
+                                    <i class="fa-solid" :class="p.isHost ? 'fa-crown' : 'fa-user'"></i>
+                                    <span x-text="p.nickname"></span>
+                                </span>
+                                <span>
+                                    <i class="fa-solid fa-circle-check" style="color: #10b981;"></i>
+                                    <strong x-text="p.score"></strong>
+                                </span>
+                            </div>
+                        </template>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+                        <button class="outline" @click="showDashboard()" x-text="t('backToMenu')"></button>
+                        <button @click="mpRematch()" x-text="t('mpRematch')"></button>
+                    </div>
+                </article>
+            </div>
+        </main>
+
         <!-- VIEW 4: HISTORY AND STATS -->
         <main x-show="view === 'history'" x-transition>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -359,9 +613,13 @@
                         <strong x-text="t('solvedQuestions') + ':'"></strong> <span x-text="getAnsweredCount()"></span>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="outline btn-auto btn-sm" @click="exportStats()">
+                        <button class="outline btn-auto btn-sm" @click="exportSave()">
                             <i class="fa-solid fa-download"></i> <span x-text="t('downloadJSON')"></span>
                         </button>
+                        <label class="outline btn-auto btn-sm" style="margin: 0; cursor: pointer;">
+                            <i class="fa-solid fa-upload"></i> <span x-text="t('restoreSave')"></span>
+                            <input type="file" @change="importSave($event)" accept=".json" style="display: none;">
+                        </label>
                         <button class="outline secondary btn-auto btn-sm" @click="resetHistory()">
                             <i class="fa-solid fa-trash-can"></i> <span x-text="t('clearHistory')"></span>
                         </button>
@@ -412,7 +670,6 @@
                 <button aria-label="Close" rel="prev" @click="modal.resolve(null); modal.visible = false"></button>
                 <p><strong x-text="modal.title"></strong></p>
             </header>
-            <input x-show="modal.kind === 'prompt'" x-model="modal.inputValue" :placeholder="modal.placeholder">
             <textarea x-show="modal.kind === 'markdown'" x-model="modal.inputValue" :placeholder="modal.placeholder" rows="10" style="margin-bottom: 0.5rem;"></textarea>
             <p x-show="modal.kind === 'confirm'" x-text="modal.message"></p>
             <footer>

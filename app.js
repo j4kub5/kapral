@@ -23,14 +23,20 @@ function quizApp() {
         editingUsername: false,
         usernameInputValue: '',
         ranks: getRanks(),
-        timerEnabled: localStorage.getItem('quiz_timer') === 'true',
-        timerDuration: parseInt(localStorage.getItem('quiz_timerDuration') || '15', 10),
-        penaltyEnabled: localStorage.getItem('quiz_penalty') === 'true',
+        timerDuration: (() => {
+            const stored = parseInt(localStorage.getItem('quiz_timerDuration') || '', 10);
+            if (!isNaN(stored)) return stored;
+            return localStorage.getItem('quiz_timer') === 'true' ? 15 : 0;
+        })(),
         timeLeft: 0,
         timerInterval: null,
+        timeoutAdvanceTimer: null,
         timeoutCount: 0,
         totalTimeUsed: 0,
         answeredCount: 0,
+        answers: [],
+
+        ...mpMixin(),
 
         initApp() {
             setLang(currentLang);
@@ -45,6 +51,28 @@ function quizApp() {
             this.loadUserPacks();
             this.loadBuiltinPacks();
             this.loadHelp();
+            this.initMp();
+            document.addEventListener('click', this.onDocClick.bind(this));
+        },
+
+        async onDocClick(e) {
+            const btn = e.target.closest('.copy-btn');
+            if (!btn) return;
+            const code = btn.closest('.code-block')?.querySelector('pre');
+            if (!code) return;
+            const text = code.textContent.trim();
+            try {
+                await navigator.clipboard.writeText(text);
+                this.showToast(t('copied'));
+            } catch (err) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                this.showToast(t('copied'));
+            }
         },
 
         loadUserPacks() {
@@ -87,19 +115,13 @@ function quizApp() {
             document.documentElement.setAttribute('data-palette', name);
         },
 
-        toggleTimer() {
-            this.timerEnabled = !this.timerEnabled;
-            localStorage.setItem('quiz_timer', this.timerEnabled);
+        get timerEnabled() {
+            return this.timerDuration > 0;
         },
 
         setTimerDuration(secs) {
-            this.timerDuration = secs;
-            localStorage.setItem('quiz_timerDuration', secs);
-        },
-
-        togglePenalty() {
-            this.penaltyEnabled = !this.penaltyEnabled;
-            localStorage.setItem('quiz_penalty', this.penaltyEnabled);
+            this.timerDuration = parseInt(secs, 10) || 0;
+            localStorage.setItem('quiz_timerDuration', this.timerDuration);
         },
 
         startTimer() {
@@ -119,6 +141,10 @@ function quizApp() {
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
             }
+            if (this.timeoutAdvanceTimer) {
+                clearTimeout(this.timeoutAdvanceTimer);
+                this.timeoutAdvanceTimer = null;
+            }
         },
 
         onTimeout() {
@@ -128,7 +154,7 @@ function quizApp() {
             this.selectedOptionIdx = -1;
             this.timeoutCount++;
             const q = this.currentQuestion;
-            if (this.penaltyEnabled) this.batchScore = Math.max(0, this.batchScore - 1);
+            this.answers[this.currentPointer] = { selected: -1, correct: false };
             this.history[q.id] = {
                 correct: false,
                 lastAnsweredAt: new Date().toISOString().split('T')[0],
@@ -137,7 +163,7 @@ function quizApp() {
             localStorage.setItem('quiz_history', JSON.stringify(this.history));
             this.lastRank = this.rankName;
             localStorage.setItem('quiz_lastRank', this.lastRank);
-            setTimeout(() => this.nextQuestion(), 3000);
+            this.timeoutAdvanceTimer = setTimeout(() => this.nextQuestion(), 3000);
         },
 
         showToast(message) {
@@ -157,22 +183,6 @@ function quizApp() {
                     inputValue: '',
                     placeholder: '',
                     confirmLabel: 'OK',
-                    cancelLabel: t('cancel'),
-                    resolve
-                };
-            });
-        },
-
-        askPrompt(text, currentValue = '', title) {
-            return new Promise((resolve) => {
-                this.modal = {
-                    visible: true,
-                    kind: 'prompt',
-                    title: title || t('promptTitle'),
-                    message: text,
-                    inputValue: currentValue,
-                    placeholder: '',
-                    confirmLabel: t('save'),
                     cancelLabel: t('cancel'),
                     resolve
                 };
@@ -214,8 +224,8 @@ function quizApp() {
             }, 0);
         },
 
-        togglePack(idx) {
-            this.packs[idx].selected = !this.packs[idx].selected;
+        togglePack(pack) {
+            pack.selected = !pack.selected;
         },
 
         selectAllPacks() {
@@ -223,12 +233,11 @@ function quizApp() {
             this.packs.forEach(p => { p.selected = !allSelected; });
         },
 
-        async removeUserPack(idx) {
-            const pack = this.packs[idx];
+        async removeUserPack(pack) {
             if (pack.source !== 'user') return;
             const ok = await this.askConfirm(t('removePackConfirm', { name: pack.name, count: pack.questions.length }), t('removePack'));
             if (ok) {
-                this.packs.splice(idx, 1);
+                this.packs.splice(this.packs.indexOf(pack), 1);
                 this.persistUserPacks();
             }
         },
@@ -271,6 +280,7 @@ function quizApp() {
             this.batchScore = 0;
             this.answeredCurrent = false;
             this.selectedOptionIdx = null;
+            this.answers = [];
             this.timeoutCount = 0;
             this.totalTimeUsed = 0;
             this.answeredCount = 0;
@@ -321,6 +331,7 @@ function quizApp() {
                 this.totalTimeUsed += (this.timerDuration - this.timeLeft);
                 this.answeredCount++;
             }
+            this.answers[this.currentPointer] = { selected: optIdx, correct: isCorrect };
 
             this.history[q.id] = {
                 correct: isCorrect,
@@ -331,20 +342,12 @@ function quizApp() {
             localStorage.setItem('quiz_lastRank', this.lastRank);
         },
 
-        getOptionClass(oIdx) {
-            if (!this.answeredCurrent) return '';
+        getOptionState(oIdx) {
+            if (!this.answeredCurrent) return { cls: '', icon: '' };
             const q = this.currentQuestion;
-            if (oIdx === q.answer) return 'correct';
-            if (oIdx === this.selectedOptionIdx && oIdx !== q.answer) return 'wrong';
-            return 'faded';
-        },
-
-        getOptionIcon(oIdx) {
-            if (!this.answeredCurrent) return '';
-            const q = this.currentQuestion;
-            if (oIdx === q.answer) return 'fa-check';
-            if (oIdx === this.selectedOptionIdx && oIdx !== q.answer) return 'fa-xmark';
-            return '';
+            if (oIdx === q.answer) return { cls: 'correct', icon: 'fa-check' };
+            if (oIdx === this.selectedOptionIdx) return { cls: 'wrong', icon: 'fa-xmark' };
+            return { cls: 'faded', icon: '' };
         },
 
         handleImageError(event) {
@@ -354,13 +357,28 @@ function quizApp() {
         nextQuestion() {
             if (this.currentPointer < this.activeQuestions.length - 1) {
                 this.currentPointer++;
-                this.answeredCurrent = false;
-                this.selectedOptionIdx = null;
-                this.startTimer();
+                const a = this.answers[this.currentPointer];
+                this.answeredCurrent = !!a;
+                this.selectedOptionIdx = a ? a.selected : null;
+                if (a) {
+                    this.stopTimer();
+                } else {
+                    this.startTimer();
+                }
             } else {
                 this.stopTimer();
                 this.view = 'results';
             }
+        },
+
+        previousQuestion() {
+            if (this.currentPointer <= 0) return;
+            this.stopTimer();
+            this.currentPointer--;
+            const a = this.answers[this.currentPointer];
+            this.answeredCurrent = !!a;
+            this.selectedOptionIdx = a ? a.selected : null;
+            if (!a) this.startTimer();
         },
 
         handleFileUpload(event) {
@@ -371,19 +389,7 @@ function quizApp() {
             reader.onload = (e) => {
                 try {
                     const content = e.target.result;
-                    if (file.name.endsWith('.json')) {
-                        const parsed = JSON.parse(content);
-                        parsed.forEach(q => {
-                            if (!q.id) q.id = generateQuestionHash(q.category || 'Ogólne', q.question);
-                        });
-                        if (parsed.length > 0) {
-                            this.pushUserPack(parsed, file.name.replace(/\.(md|json)$/, ''));
-                        } else {
-                            this.showToast(t('invalidFile'));
-                        }
-                    } else {
-                        this.addPackFromText(content, file.name.replace(/\.(md|json)$/, ''));
-                    }
+                    this.addPackFromText(content, file.name.replace(/\.md$/, ''));
                 } catch (err) {
                     this.showToast(t('fileReadError') + err.message);
                 }
@@ -462,22 +468,43 @@ function quizApp() {
                 const filename = lang === 'en' ? 'help_en.md' : 'help_pl.md';
                 const res = await fetch(filename);
                 if (res.ok) {
-                    this.helpContent = marked.parse(await res.text());
+                    this.helpContent = marked.parse(await res.text())
+                        .replace(/<pre><code>/g, `<div class="code-block"><button class="copy-btn" type="button" title="${t('copyPrompt')}"><i class="fa-solid fa-copy"></i></button><pre><code>`)
+                        .replace(/<\/code><\/pre>/g, '</code></pre></div>');
                 }
             } catch (e) {
                 console.warn('Failed to load help:', e);
             }
         },
 
-        async exportStats() {
+        downloadBlob(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        },
+
+        async exportSave() {
             const exportData = {
                 username: this.username || t('anonymous'),
                 exportedAt: new Date().toISOString(),
-                history: this.history
+                theme: this.isDark ? 'dark' : 'light',
+                palette: this.palette,
+                lang: currentLang,
+                lastRank: this.lastRank,
+                timerDuration: this.timerDuration,
+                history: this.history,
+                userPacks: this.packs
+                    .filter(p => p.source === 'user')
+                    .map(({ name, questions }) => ({ name, questions }))
             };
 
             const jsonString = JSON.stringify(exportData, null, 2);
-            const fileName = `kapral_quiz_stats_${this.username || 'user'}.json`;
+            const fileName = `kapral_save_${this.username || 'user'}.json`;
 
             if ('showSaveFilePicker' in window) {
                 try {
@@ -498,14 +525,100 @@ function quizApp() {
             }
 
             const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            this.downloadBlob(blob, fileName);
+        },
+
+        importSave(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                let data;
+                try {
+                    data = JSON.parse(e.target.result);
+                } catch (err) {
+                    this.showToast(t('invalidSave'));
+                    return;
+                }
+                if (!data.exportedAt || !data.history) {
+                    this.showToast(t('invalidSave'));
+                    return;
+                }
+
+                this.history = data.history;
+                localStorage.setItem('quiz_history', JSON.stringify(this.history));
+
+                if (data.username != null) {
+                    this.username = data.username;
+                    localStorage.setItem('quiz_username', this.username);
+                }
+                if (data.lastRank) {
+                    this.lastRank = data.lastRank;
+                    localStorage.setItem('quiz_lastRank', this.lastRank);
+                }
+                if (data.timerDuration != null) {
+                    this.timerDuration = parseInt(data.timerDuration, 10) || 0;
+                    localStorage.setItem('quiz_timerDuration', this.timerDuration);
+                }
+                if (data.theme) {
+                    this.isDark = data.theme === 'dark';
+                    localStorage.setItem('quiz_theme', this.isDark ? 'dark' : 'light');
+                    this.applyTheme();
+                }
+                if (data.palette) {
+                    this.setPalette(data.palette);
+                }
+
+                if (Array.isArray(data.userPacks) && data.userPacks.length > 0) {
+                    const restorePacks = await this.askConfirm(
+                        t('restorePacksConfirm', { count: data.userPacks.length }),
+                        t('restoreSave')
+                    );
+                    if (restorePacks) {
+                        localStorage.setItem('quiz_user_packs', JSON.stringify(data.userPacks));
+                        if (data.lang && data.lang !== currentLang) setLang(data.lang);
+                        location.reload();
+                        return;
+                    }
+                }
+
+                if (data.lang && data.lang !== currentLang) {
+                    setLang(data.lang);
+                    location.reload();
+                    return;
+                }
+                this.showToast(t('restoreSuccess'));
+            };
+            reader.readAsText(file);
+        },
+
+        exportPackAsMarkdown(pack) {
+            if (!pack) return;
+
+            const byCategory = {};
+            pack.questions.forEach(q => {
+                if (!byCategory[q.category]) byCategory[q.category] = [];
+                byCategory[q.category].push(q);
+            });
+
+            const lines = [`# ${pack.name}`];
+            for (const [cat, qs] of Object.entries(byCategory)) {
+                lines.push(`\n## ${cat}`);
+                qs.forEach(q => {
+                    lines.push(`\n### ${q.question}`);
+                    if (q.imageUrl) lines.push(`\n![${q.question}](${q.imageUrl})`);
+                    lines.push('');
+                    q.options.forEach((opt, i) => {
+                        lines.push(`${i === q.answer ? '- [x]' : '- [ ]'} ${opt}`);
+                    });
+                    if (q.explanation) lines.push(`\n> ${currentLang === 'en' ? 'Explanation' : 'Wyjaśnienie'}: ${q.explanation}`);
+                });
+            }
+
+            const md = lines.join('\n');
+            const blob = new Blob([md], { type: 'text/markdown' });
+            this.downloadBlob(blob, `${pack.name.replace(/\s+/g, '_')}.md`);
         },
 
         async resetHistory() {
@@ -517,6 +630,7 @@ function quizApp() {
                 localStorage.setItem('quiz_lastRank', this.lastRank);
                 this.showToast(t('historyCleared'));
             }
-        }
+        },
+
     };
 }

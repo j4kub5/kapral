@@ -12,11 +12,9 @@ body {
 [data-palette="pink"] {
     --palette-primary-light: #f06292;
     --palette-primary-dark: #f48fb1;
-    --palette-bg-light: #f06292;
     --palette-bg-dark: #ec407a;
     --palette-hover-light: #ec407a;
     --palette-hover-dark: #f8bbd0;
-    --palette-hover-bg-light: #ec407a;
     --palette-hover-bg-dark: #f06292;
     --palette-focus-light: rgba(240, 98, 146, 0.5);
     --palette-focus-dark: rgba(244, 143, 177, 0.375);
@@ -30,11 +28,9 @@ body {
 [data-palette="cyan"] {
     --palette-primary-light: #4dd0e1;
     --palette-primary-dark: #80deea;
-    --palette-bg-light: #4dd0e1;
     --palette-bg-dark: #26c6da;
     --palette-hover-light: #26c6da;
     --palette-hover-dark: #b2ebf2;
-    --palette-hover-bg-light: #26c6da;
     --palette-hover-bg-dark: #4dd0e1;
     --palette-focus-light: rgba(77, 208, 225, 0.5);
     --palette-focus-dark: rgba(128, 222, 234, 0.375);
@@ -48,11 +44,9 @@ body {
 [data-palette="sand"] {
     --palette-primary-light: #a1887f;
     --palette-primary-dark: #bcaaa4;
-    --palette-bg-light: #a1887f;
     --palette-bg-dark: #8d6e63;
     --palette-hover-light: #8d6e63;
     --palette-hover-dark: #d7ccc8;
-    --palette-hover-bg-light: #8d6e63;
     --palette-hover-bg-dark: #a1887f;
     --palette-focus-light: rgba(161, 136, 127, 0.5);
     --palette-focus-dark: rgba(188, 170, 164, 0.375);
@@ -66,11 +60,9 @@ body {
 [data-palette="slate"] {
     --palette-primary-light: #78909c;
     --palette-primary-dark: #90a4ae;
-    --palette-bg-light: #78909c;
     --palette-bg-dark: #607d8b;
     --palette-hover-light: #607d8b;
     --palette-hover-dark: #b0bec5;
-    --palette-hover-bg-light: #607d8b;
     --palette-hover-bg-dark: #78909c;
     --palette-focus-light: rgba(120, 144, 156, 0.5);
     --palette-focus-dark: rgba(144, 164, 174, 0.375);
@@ -87,10 +79,10 @@ body {
 :root:not([data-theme="dark"]) {
     --pico-text-selection-color: var(--palette-selection-light);
     --pico-primary: var(--palette-primary-light);
-    --pico-primary-background: var(--palette-bg-light);
+    --pico-primary-background: var(--palette-primary-light);
     --pico-primary-underline: var(--palette-underline-light);
     --pico-primary-hover: var(--palette-hover-light);
-    --pico-primary-hover-background: var(--palette-hover-bg-light);
+    --pico-primary-hover-background: var(--palette-hover-light);
     --pico-primary-focus: var(--palette-focus-light);
     --pico-primary-inverse: var(--palette-inverse);
 }
@@ -168,6 +160,35 @@ body {
 
 .option-button.faded {
     opacity: 0.4;
+}
+
+.option-button.selected {
+    border-color: var(--pico-primary) !important;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ===== Multiplayer ===== */
+
+.mp-player-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-border-color);
+    font-size: 0.9rem;
+}
+
+.mp-player-chip.host {
+    border-color: var(--pico-primary);
+    color: var(--pico-primary);
+}
+
+.mp-player-chip small {
+    color: var(--pico-muted-color);
+    font-weight: 600;
+    margin-left: 0.15rem;
 }
 
 /* ===== Image container ===== */
@@ -280,6 +301,23 @@ body {
     color: #ef4444;
 }
 
+.pack-download-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 2.5rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1;
+    background: transparent;
+    border: none;
+    color: var(--pico-muted-color);
+    cursor: pointer;
+}
+
+.pack-download-btn:hover {
+    color: var(--pico-primary);
+}
+
 /* ===== Start panel ===== */
 
 .start-panel {
@@ -313,13 +351,7 @@ body {
     line-height: 1;
 }
 
-/* ===== Question presets ===== */
-
-.question-presets {
-    display: flex;
-    gap: 0.35rem;
-    align-items: center;
-}
+/* ===== Timer group ===== */
 
 .timer-group {
     display: flex;
@@ -327,18 +359,6 @@ body {
     gap: 0.75rem;
     border-left: 1px solid var(--pico-border-color);
     padding-left: 0.75rem;
-}
-
-
-.question-presets button {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
-}
-
-.question-presets button.active {
-    background-color: var(--pico-primary);
-    color: var(--pico-primary-inverse);
-    border-color: var(--pico-primary);
 }
 
 /* ===== Toast ===== */
@@ -418,6 +438,19 @@ body {
     right: 1rem;
     color: var(--pico-muted-color);
     font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.github-link {
+    color: var(--pico-muted-color);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.github-link:hover {
+    color: var(--pico-foreground);
 }
 
 /* ===== Help view ===== */
@@ -446,6 +479,34 @@ body {
     white-space: pre-wrap;
 }
 
+.code-block {
+    position: relative;
+}
+
+.code-block pre {
+    padding-right: 3rem;
+}
+
+.code-block .copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1;
+    background: transparent;
+    border: 1px solid var(--pico-border-color);
+    border-radius: var(--pico-border-radius);
+    color: var(--pico-muted-color);
+    cursor: pointer;
+    z-index: 1;
+}
+
+.code-block .copy-btn:hover {
+    color: var(--pico-primary);
+    border-color: var(--pico-primary);
+}
+
 /* ===== Responsive ===== */
 
 @media (max-width: 576px) {
@@ -465,10 +526,6 @@ body {
     .start-panel-inner > div:last-child {
         flex-direction: column;
         width: 100%;
-    }
-
-    .start-panel-inner > div:last-child .question-presets {
-        flex-wrap: wrap;
     }
 
     .timer-group {

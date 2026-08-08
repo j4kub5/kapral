@@ -1,4 +1,6 @@
 // Helper: Hash generation (DJB2) for unique question IDs
+const marked = globalThis.marked;
+
 function generateQuestionHash(category, questionText) {
     const raw = (category + '::' + questionText).toLowerCase().trim().replace(/\s+/g, ' ');
     let hash = 5381;
@@ -114,3 +116,5 @@ function parseMarkdownWithMarked(mdText) {
 
     return questions;
 }
+
+globalThis.parseMarkdownWithMarked = parseMarkdownWithMarked;

@@ -1,0 +1,288 @@
+// mp.js — multiplayer state and logic (mixins into quizApp())
+function mpMixin() {
+    return {
+        // Multiplayer state
+        mpSocket: null,
+        mpServer: window.location.origin,
+        mpScreen: 'connect',
+        mpNickname: '',
+        mpJoinCode: '',
+        mpCode: '',
+        mpRoomName: '',
+        mpQr: '',
+        mpIsHost: false,
+        mpHostPlays: false,
+        mpPlayers: [],
+        mpQuestionCount: 0,
+        mpPackName: '',
+        mpPackText: '',
+        mpUploadMode: 'file',
+        mpPasteText: '',
+        mpStartCount: 10,
+        mpTimePerQuestion: 15,
+        mpCurrentQuestion: null,
+        mpIndex: 0,
+        mpTotal: 0,
+        mpTimeLeft: 0,
+        mpAnswered: false,
+        mpMyAnswer: null,
+        mpMyScore: 0,
+        mpRevealed: false,
+        mpCorrectIndex: null,
+        mpExplanation: '',
+        mpResults: [],
+        mpCountdownTimer: null,
+
+        initMp() {
+            const room = new URLSearchParams(location.search).get('room');
+            if (!room) return;
+            this.mpJoinCode = room.toUpperCase();
+            this.mpServer = window.location.origin;
+            this.view = 'multiplayer';
+            this.connectServer();
+        },
+
+        mpRandomNickname() {
+            const name = t('mpRandomPrefix') + '-' + Math.floor(1000 + Math.random() * 9000);
+            localStorage.setItem('quiz_mp_nickname', name);
+            return name;
+        },
+
+        ensureMpNickname() {
+            if (this.mpNickname) return;
+            this.mpNickname = this.username || localStorage.getItem('quiz_mp_nickname') || this.mpRandomNickname();
+        },
+
+        mpPersistNickname() {
+            if (this.mpNickname) localStorage.setItem('quiz_mp_nickname', this.mpNickname);
+        },
+
+        mpRandomRoomName() {
+            return t('room') + '-' + Math.floor(1000 + Math.random() * 9000);
+        },
+
+        connectServer() {
+            if (this.mpSocket?.connected) return;
+            this.mpSocket?.disconnect();
+            this.mpSocket = null;
+            this.mpSocket = io(this.mpServer.trim() || undefined);
+            this.mpSocket.on('connect', () => {
+                this.mpScreen = 'menu';
+                this.ensureMpNickname();
+                this.showToast(t('mpConnected'));
+            });
+            this.mpSocket.on('connect_error', () => {
+                this.showToast(t('mpConnectError'));
+            });
+            this.mpSocket.on('disconnect', () => {
+                this.mpScreen = 'connect';
+                this.mpIsHost = false;
+                this.mpHostPlays = false;
+                this.mpCode = '';
+                this.mpRoomName = '';
+                this.mpQr = '';
+                this.showToast(t('mpDisconnected'));
+            });
+            this.mpSocket.on('player-list', ({ players }) => {
+                this.mpPlayers = players;
+            });
+            this.mpSocket.on('game-start', ({ total, timePerQuestion, name, code }) => {
+                this.mpTotal = total;
+                this.mpTimePerQuestion = timePerQuestion;
+                this.mpRoomName = name;
+                this.mpCode = code || this.mpCode;
+                this.mpScreen = 'game';
+            });
+            this.mpSocket.on('question', (d) => {
+                this.mpCurrentQuestion = d.q;
+                this.mpIndex = d.index;
+                this.mpTotal = d.total;
+                this.mpAnswered = false;
+                this.mpMyAnswer = null;
+                this.mpRevealed = false;
+                this.mpCorrectIndex = null;
+                this.mpExplanation = '';
+                this.mpTimeLeft = d.timePerQuestion;
+                clearInterval(this.mpCountdownTimer);
+                this.mpCountdownTimer = setInterval(() => {
+                    this.mpTimeLeft--;
+                    if (this.mpTimeLeft <= 0) {
+                        clearInterval(this.mpCountdownTimer);
+                    }
+                }, 1000);
+                $nextTick(() => MathJax.typesetPromise?.());
+            });
+            this.mpSocket.on('answer-result', ({ correct, score }) => {
+                this.mpMyScore = score;
+                this.mpAnswered = true;
+            });
+            this.mpSocket.on('question-reveal', ({ correctIndex, explanation }) => {
+                this.mpRevealed = true;
+                this.mpCorrectIndex = correctIndex;
+                this.mpExplanation = explanation || '';
+                clearInterval(this.mpCountdownTimer);
+                $nextTick(() => MathJax.typesetPromise?.());
+            });
+            this.mpSocket.on('game-end', ({ results }) => {
+                this.mpResults = results;
+                this.mpScreen = 'results';
+                clearInterval(this.mpCountdownTimer);
+            });
+            this.mpSocket.on('host-left', () => {
+                this.leaveMultiplayer(true);
+                this.showToast(t('mpHostLeft'));
+            });
+            this.mpSocket.on('room-closed', () => {
+                this.leaveMultiplayer(true);
+                this.showToast(t('mpRoomClosed'));
+            });
+        },
+
+        createRoom() {
+            const nickname = this.mpNickname.trim() || this.username || t('guest');
+            if (!this.mpSocket || !this.mpSocket.connected) {
+                this.showToast(t('mpNotConnected'));
+                return;
+            }
+            this.mpSocket.emit('create-room', { nickname, roomName: this.mpRoomName.trim() || this.mpRandomRoomName(), hostPlays: this.mpHostPlays }, (res) => {
+                if (!res.ok) {
+                    this.showToast(t('mpCreateError'));
+                    return;
+                }
+                this.mpCode = res.code;
+                this.mpRoomName = res.name;
+                this.mpIsHost = true;
+                this.mpPlayers = res.players;
+                this.mpQr = res.qr || '';
+                this.mpQuestionCount = 0;
+                this.mpPackName = '';
+                this.mpPackText = '';
+                this.mpScreen = 'lobby';
+            });
+        },
+
+        joinRoom() {
+            const nickname = this.mpNickname.trim() || this.username || t('guest');
+            const code = (this.mpJoinCode || '').trim().toUpperCase();
+            if (!code) {
+                this.showToast(t('mpEnterCode'));
+                return;
+            }
+            if (!this.mpSocket || !this.mpSocket.connected) {
+                this.showToast(t('mpNotConnected'));
+                return;
+            }
+            this.mpSocket.emit('join-room', { code, nickname }, (res) => {
+                if (!res.ok) {
+                    this.showToast(res.error === 'room-full' ? t('mpRoomFull') : t('mpRoomNotFound'));
+                    return;
+                }
+                this.mpCode = res.code;
+                this.mpRoomName = res.name;
+                this.mpIsHost = false;
+                this.mpPlayers = res.players;
+                this.mpQuestionCount = 0;
+                this.mpScreen = 'lobby';
+            });
+        },
+
+        mpUploadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.mpPackText = e.target.result;
+                this.mpSendPack();
+            };
+            reader.readAsText(file);
+        },
+
+        mpSendPaste() {
+            if (!this.mpPasteText.trim()) return;
+            this.mpPackText = this.mpPasteText;
+            this.mpSendPack();
+        },
+
+        mpSetHostPlays() {
+            if (!this.mpSocket || !this.mpSocket.connected) return;
+            this.mpSocket.emit('set-host-plays', { hostPlays: this.mpHostPlays }, (res) => {
+                if (!res.ok) {
+                    this.mpHostPlays = !this.mpHostPlays;
+                    this.showToast(t('mpStartError'));
+                }
+            });
+        },
+
+        mpSendPack() {
+            if (!this.mpSocket) return;
+            this.mpSocket.emit('upload-pack', { markdown: this.mpPackText }, (res) => {
+                if (!res.ok) {
+                    this.showToast(t('mpPackInvalid'));
+                    return;
+                }
+                this.mpQuestionCount = res.count;
+                this.mpPackName = res.packName;
+                this.mpPackText = '';
+                this.mpUploadMode = 'file';
+                this.mpPasteText = '';
+                this.showToast(t('mpPackReady', { name: res.packName, count: res.count }));
+            });
+        },
+
+        mpStartGame() {
+            if (!this.mpSocket || this.mpQuestionCount === 0) return;
+            this.mpSocket.emit('start-game', { questionCount: this.mpStartCount, timePerQuestion: this.mpTimePerQuestion }, (res) => {
+                if (!res.ok) {
+                    this.showToast(t('mpStartError'));
+                    return;
+                }
+                this.mpPlayers = this.mpPlayers.map(p => ({ ...p, score: 0 }));
+            });
+        },
+
+        mpAnswer(oIdx) {
+            if (this.mpAnswered || this.mpRevealed || !this.mpSocket) return;
+            this.mpAnswered = true;
+            this.mpMyAnswer = oIdx;
+            this.mpSocket.emit('answer', { answer: oIdx }, (res) => {
+                if (res && !res.ok) this.mpAnswered = false;
+            });
+        },
+
+        mpOptionState(oIdx) {
+            if (!this.mpRevealed && !this.mpAnswered) return { cls: '', icon: '' };
+            if (this.mpRevealed) {
+                if (oIdx === this.mpCorrectIndex) return { cls: 'correct', icon: 'fa-check' };
+                if (oIdx === this.mpMyAnswer) return { cls: 'wrong', icon: 'fa-xmark' };
+                return { cls: 'faded', icon: '' };
+            }
+            if (oIdx === this.mpMyAnswer) return { cls: 'selected', icon: '' };
+            return { cls: 'faded', icon: '' };
+        },
+
+        mpRematch() {
+            this.mpResults = [];
+            this.mpScreen = 'lobby';
+        },
+
+        leaveMultiplayer(silent = false) {
+            clearInterval(this.mpCountdownTimer);
+            if (this.mpSocket) {
+                this.mpSocket.disconnect();
+                this.mpSocket = null;
+            }
+            this.mpScreen = 'connect';
+            this.mpIsHost = false;
+            this.mpHostPlays = false;
+            this.mpCode = '';
+            this.mpRoomName = '';
+            this.mpQr = '';
+            this.mpPlayers = [];
+            this.mpQuestionCount = 0;
+            this.mpPackName = '';
+            this.mpCurrentQuestion = null;
+            this.mpResults = [];
+            if (!silent) this.view = 'dashboard';
+        }
+    };
+}
