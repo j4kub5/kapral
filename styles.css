@@ -167,6 +167,53 @@ body {
     background-color: rgba(0, 0, 0, 0.1);
 }
 
+.answer-feedback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+    padding: 0.9rem 1.25rem;
+    border-radius: var(--pico-border-radius);
+    font-size: 1.05rem;
+}
+
+.answer-feedback.correct {
+    border: 1.5px solid #10b981;
+    background-color: rgba(16, 185, 129, 0.18) !important;
+    color: #10b981;
+}
+
+.answer-feedback.wrong {
+    border: 1.5px solid #ef4444;
+    background-color: rgba(239, 68, 68, 0.18) !important;
+    color: #ef4444;
+}
+
+[data-theme="dark"] .answer-feedback.correct {
+    background-color: rgba(16, 185, 129, 0.22) !important;
+}
+
+[data-theme="dark"] .answer-feedback.wrong {
+    background-color: rgba(239, 68, 68, 0.22) !important;
+}
+
+.review-question summary {
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    border-radius: var(--pico-border-radius);
+    background: var(--pico-card-background-color);
+    margin-bottom: 0.5rem;
+}
+
+.review-question summary > small {
+    margin-top: 0.25rem;
+}
+
+.review-question[open] summary {
+    border-bottom: 1px solid var(--pico-border-color);
+}
+
 /* ===== Multiplayer ===== */
 
 .mp-player-chip {

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: kapral-pk
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: PUBLIC_URL
+        value: https://kapral-pk.onrender.com

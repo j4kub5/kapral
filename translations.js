@@ -1,5 +1,5 @@
 // translations.js — i18n dictionary for PL/EN
-const APP_VERSION = '0.2.99';
+const APP_VERSION = '0.3.0';
 let currentLang = localStorage.getItem('quiz_lang') || 'pl';
 
 const TRANSLATIONS = {
@@ -68,6 +68,8 @@ const TRANSLATIONS = {
         lastAnswer: 'Ostatnia odpowiedź: ',
         correct: 'Poprawna',
         wrong: 'Błędna',
+        answerCorrect: 'Poprawna odpowiedź!',
+        answerWrong: 'Błędna odpowiedź',
         noHistory: 'Brak zapisanej historii odpowiedzi.',
         // Multiplayer
         multiplayer: 'Multiplayer',
@@ -105,6 +107,7 @@ const TRANSLATIONS = {
         mpWaitingOthers: 'Czekanie na pozostałych graczy...',
         mpGameOver: 'Koniec gry!',
         mpRematch: 'Zagraj jeszcze raz',
+        mpAnswersReview: 'Przejrzyj odpowiedzi',
         mpNotConnected: 'Nie połączono z serwerem.',
         mpEnterCode: 'Wpisz kod pokoju.',
         mpRoomNotFound: 'Nie znaleziono pokoju o tym kodzie.',
@@ -222,6 +225,8 @@ const TRANSLATIONS = {
         lastAnswer: 'Last answer: ',
         correct: 'Correct',
         wrong: 'Wrong',
+        answerCorrect: 'Correct answer!',
+        answerWrong: 'Wrong answer',
         noHistory: 'No saved answer history.',
         // Multiplayer
         multiplayer: 'Multiplayer',
@@ -259,6 +264,7 @@ const TRANSLATIONS = {
         mpWaitingOthers: 'Waiting for other players...',
         mpGameOver: 'Game over!',
         mpRematch: 'Play again',
+        mpAnswersReview: 'Review answers',
         mpNotConnected: 'Not connected to server.',
         mpEnterCode: 'Enter a room code.',
         mpRoomNotFound: 'No room found with that code.',

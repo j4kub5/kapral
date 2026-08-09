@@ -35,10 +35,8 @@ player.on('game-start', (d) => {
   if (typeof d.code !== 'string' || !d.code) fail('game-start: room code missing');
 });
 player.on('answer-result', (d) => {
-  if (typeof d.correct !== 'boolean' || typeof d.score !== 'number') fail('answer-result');
-});
-player.on('question-reveal', (d) => {
-  if (typeof d.correctIndex !== 'number') fail('question-reveal');
+  if (typeof d.score !== 'number') fail('answer-result');
+  if (d.correct !== undefined) fail('answer-result: correct must not leak mid-game');
 });
 host.on('question', (d) => {
   if (!playingHost) fail('host should receive questions');
@@ -47,6 +45,10 @@ host.on('question', (d) => {
 host.on('game-end', (d) => {
   if (!Array.isArray(d.results)) fail('game-end');
   if (playingHost && d.results.length !== 2) fail('game-end: host should be in results when playing');
+  if (!Array.isArray(d.review) || d.review.length !== 2) fail('game-end: review missing');
+  const q0 = d.review[0];
+  if (typeof q0.correctIndex !== 'number' || !Array.isArray(q0.options)) fail('game-end: review question missing answer');
+  if (!Array.isArray(q0.answers) || q0.answers.length !== 2) fail('game-end: review player answers missing');
   sawGameEnd = true;
   console.log('E2E OK:', JSON.stringify(d.results));
   host.close(); player.close();

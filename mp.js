@@ -27,10 +27,8 @@ function mpMixin() {
         mpAnswered: false,
         mpMyAnswer: null,
         mpMyScore: 0,
-        mpRevealed: false,
-        mpCorrectIndex: null,
-        mpExplanation: '',
         mpResults: [],
+        mpReview: [],
         mpCountdownTimer: null,
 
         initMp() {
@@ -99,9 +97,6 @@ function mpMixin() {
                 this.mpTotal = d.total;
                 this.mpAnswered = false;
                 this.mpMyAnswer = null;
-                this.mpRevealed = false;
-                this.mpCorrectIndex = null;
-                this.mpExplanation = '';
                 this.mpTimeLeft = d.timePerQuestion;
                 clearInterval(this.mpCountdownTimer);
                 this.mpCountdownTimer = setInterval(() => {
@@ -112,19 +107,13 @@ function mpMixin() {
                 }, 1000);
                 $nextTick(() => MathJax.typesetPromise?.());
             });
-            this.mpSocket.on('answer-result', ({ correct, score }) => {
+            this.mpSocket.on('answer-result', ({ score }) => {
                 this.mpMyScore = score;
                 this.mpAnswered = true;
             });
-            this.mpSocket.on('question-reveal', ({ correctIndex, explanation }) => {
-                this.mpRevealed = true;
-                this.mpCorrectIndex = correctIndex;
-                this.mpExplanation = explanation || '';
-                clearInterval(this.mpCountdownTimer);
-                $nextTick(() => MathJax.typesetPromise?.());
-            });
-            this.mpSocket.on('game-end', ({ results }) => {
+            this.mpSocket.on('game-end', ({ results, review }) => {
                 this.mpResults = results;
+                this.mpReview = review || [];
                 this.mpScreen = 'results';
                 clearInterval(this.mpCountdownTimer);
             });
@@ -241,7 +230,7 @@ function mpMixin() {
         },
 
         mpAnswer(oIdx) {
-            if (this.mpAnswered || this.mpRevealed || !this.mpSocket) return;
+            if (this.mpAnswered || !this.mpSocket) return;
             this.mpAnswered = true;
             this.mpMyAnswer = oIdx;
             this.mpSocket.emit('answer', { answer: oIdx }, (res) => {
@@ -250,14 +239,19 @@ function mpMixin() {
         },
 
         mpOptionState(oIdx) {
-            if (!this.mpRevealed && !this.mpAnswered) return { cls: '', icon: '' };
-            if (this.mpRevealed) {
-                if (oIdx === this.mpCorrectIndex) return { cls: 'correct', icon: 'fa-check' };
-                if (oIdx === this.mpMyAnswer) return { cls: 'wrong', icon: 'fa-xmark' };
-                return { cls: 'faded', icon: '' };
-            }
+            if (!this.mpAnswered) return { cls: '', icon: '' };
             if (oIdx === this.mpMyAnswer) return { cls: 'selected', icon: '' };
             return { cls: 'faded', icon: '' };
+        },
+
+        mpReviewSummary(item) {
+            const counts = { correct: 0, wrong: 0, none: 0 };
+            for (const a of item.answers) {
+                if (a.answer === null || a.answer === undefined) counts.none++;
+                else if (a.answer === item.correctIndex) counts.correct++;
+                else counts.wrong++;
+            }
+            return counts;
         },
 
         mpRematch() {

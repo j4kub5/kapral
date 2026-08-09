@@ -27,7 +27,15 @@ const PUBLIC_URL = process.env.PUBLIC_URL || `http://${getLanIp()}:${PORT}`;
 
 const app = express();
 app.use(cors());
-app.use(express.static(path.join(__dirname, '..')));
+// Serwuj tylko pliki frontendu (reszta repo, w tym server/, jest prywatna).
+const ROOT_DIR = path.join(__dirname, '..');
+const PUBLIC_FILES = ['index.html', 'styles.css', 'logo.png', 'app.js', 'parser.js', 'mp.js', 'translations.js', 'help_pl.md', 'help_en.md'];
+app.use((req, res, next) => {
+    const p = decodeURIComponent(req.path.replace(/^\//, ''));
+    const allowed = p === '' || PUBLIC_FILES.includes(p) || p.startsWith('packs/');
+    if (!allowed) return res.status(404).end();
+    next();
+}, express.static(ROOT_DIR));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -63,7 +71,7 @@ function safeQuestions(qs) {
 
 function startRound(room) {
     room.currentIndex = -1;
-    room.players.forEach(p => { p.score = 0; p.answered = false; });
+    room.players.forEach(p => { p.score = 0; p.answered = false; p.answers = []; });
     broadcastRoom(room, 'game-start', { total: room.questions.length, timePerQuestion: room.timePerQuestion, name: room.name, code: room.code });
     sendNextQuestion(room);
 }
@@ -83,20 +91,25 @@ function sendNextQuestion(room) {
         q: safeQuestions([q])[0]
     });
     clearTimeout(room.timer);
-    room.timer = setTimeout(() => revealQuestion(room), room.timePerQuestion * 1000);
+    room.timer = setTimeout(() => advanceRound(room), room.timePerQuestion * 1000);
 }
 
-function revealQuestion(room) {
-    const q = room.questions[room.currentIndex];
-    if (!q) return;
-    broadcastRoom(room, 'question-reveal', { correctIndex: q.answer, explanation: q.explanation });
+function advanceRound(room) {
     clearTimeout(room.timer);
     room.timer = setTimeout(() => sendNextQuestion(room), REVEAL_DELAY_MS);
 }
 
 function endGame(room) {
     clearTimeout(room.timer);
-    broadcastRoom(room, 'game-end', { results: playerList(room) });
+    const review = room.questions.map((q, i) => ({
+        question: q.question,
+        imageUrl: q.imageUrl,
+        options: q.options,
+        correctIndex: q.answer,
+        explanation: q.explanation,
+        answers: room.players.map(p => ({ nickname: p.nickname, answer: p.answers[i] ?? null }))
+    }));
+    broadcastRoom(room, 'game-end', { results: playerList(room), review });
 }
 
 io.on('connection', (socket) => {
@@ -120,7 +133,7 @@ io.on('connection', (socket) => {
             lastActivity: Date.now()
         };
         if (room.hostPlays) {
-            room.players.push({ id: socket.id, nickname: room.hostNickname, score: 0, isHost: true, answered: false });
+            room.players.push({ id: socket.id, nickname: room.hostNickname, score: 0, isHost: true, answered: false, answers: [] });
         }
         rooms.set(roomId, room);
         socket.join(roomId);
@@ -143,7 +156,7 @@ io.on('connection', (socket) => {
         room.hostPlays = !!hostPlays;
         room.players = room.players.filter(p => p.id !== room.hostSocketId);
         if (room.hostPlays) {
-            room.players.unshift({ id: room.hostSocketId, nickname: room.hostNickname, score: 0, isHost: true, answered: false });
+            room.players.unshift({ id: room.hostSocketId, nickname: room.hostNickname, score: 0, isHost: true, answered: false, answers: [] });
         }
         ack?.({ ok: true });
         broadcastRoom(room, 'player-list', { players: playerList(room) });
@@ -155,7 +168,7 @@ io.on('connection', (socket) => {
         if (room.players.length >= MAX_PLAYERS) return ack({ ok: false, error: 'room-full' });
         if (room.started) return ack({ ok: false, error: 'game-in-progress' });
 
-        const player = { id: socket.id, nickname: nickname || 'Player', score: 0, isHost: false, answered: false };
+        const player = { id: socket.id, nickname: nickname || 'Player', score: 0, isHost: false, answered: false, answers: [] };
         room.players.push(player);
         socket.join(room.roomId);
         socket.data.roomId = room.roomId;
@@ -205,15 +218,16 @@ io.on('connection', (socket) => {
         if (!q) return;
 
         player.answered = true;
+        player.answers[room.currentIndex] = answer;
         const correct = (answer === q.answer);
         if (correct) player.score++;
         room.lastActivity = Date.now();
 
-        socket.emit('answer-result', { correct, score: player.score });
+        socket.emit('answer-result', { score: player.score });
         io.to(room.hostSocketId).emit('player-list', { players: playerList(room) });
 
         if (room.players.every(p => p.answered)) {
-            revealQuestion(room);
+            advanceRound(room);
         }
         if (ack) ack({ ok: true });
     });

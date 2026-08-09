@@ -306,6 +306,14 @@
                     </template>
                 </div>
 
+                <div x-show="answeredCurrent"
+                     class="answer-feedback"
+                     :class="answers[currentPointer]?.correct ? 'correct' : 'wrong'"
+                     x-transition>
+                    <i class="fa-solid" :class="answers[currentPointer]?.correct ? 'fa-circle-check' : 'fa-circle-xmark'"></i>
+                    <strong x-text="answers[currentPointer]?.correct ? t('answerCorrect') : t('answerWrong')"></strong>
+                </div>
+
                 <div x-show="answeredCurrent && currentQuestion?.explanation"
                      x-transition
                      style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--pico-border-radius); background-color: rgba(0, 0, 0, 0.1); border-left: 4px solid var(--pico-primary);">
@@ -542,7 +550,7 @@
                             <button class="option-button"
                                     :class="mpOptionState(oIdx).cls"
                                     @click="mpAnswer(oIdx)"
-                                    :disabled="mpAnswered || mpRevealed || (mpIsHost && !mpHostPlays)">
+                                    :disabled="mpAnswered || (mpIsHost && !mpHostPlays)">
                                 <div>
                                     <strong style="margin-right: 0.5rem;" x-text="['A)', 'B)', 'C)', 'D)', 'E)'][oIdx]"></strong>
                                     <span x-html="opt"></span>
@@ -552,16 +560,7 @@
                         </template>
                     </div>
 
-                    <div x-show="mpRevealed && mpExplanation"
-                         x-transition
-                         style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--pico-border-radius); background-color: rgba(0, 0, 0, 0.1); border-left: 4px solid var(--pico-primary);">
-                        <div style="font-weight: bold; color: var(--pico-primary); margin-bottom: 0.25rem;">
-                            <i class="fa-solid fa-lightbulb"></i> <span x-text="t('explanation') + ':'"></span>
-                        </div>
-                        <div style="font-size: 0.95rem; color: var(--pico-color);" x-html="mpExplanation"></div>
-                    </div>
-
-                    <div x-show="mpAnswered && !mpRevealed" style="margin-top: 1.25rem; text-align: center;">
+                    <div x-show="mpAnswered" style="margin-top: 1.25rem; text-align: center;">
                         <small style="color: var(--pico-muted-color);" x-text="t('mpWaitingOthers')"></small>
                     </div>
                 </article>
@@ -594,6 +593,57 @@
                         <button @click="mpRematch()" x-text="t('mpRematch')"></button>
                     </div>
                 </article>
+
+                <div x-show="mpReview.length" style="margin-top: 2rem; text-align: left;">
+                    <h4 x-text="t('mpAnswersReview')"></h4>
+                    <template x-for="(item, qi) in mpReview" :key="qi">
+                        <details class="review-question">
+                            <summary>
+                                <strong x-text="'#' + (qi + 1)"></strong>
+                                <span x-html="item.question"></span>
+                                <small style="display: block; color: var(--pico-muted-color);">
+                                    <i class="fa-solid fa-circle-check" style="color: #10b981;"></i>
+                                    <span x-text="mpReviewSummary(item).correct"></span>
+                                    <span x-text="' · '"></span>
+                                    <i class="fa-solid fa-circle-xmark" style="color: #ef4444;"></i>
+                                    <span x-text="mpReviewSummary(item).wrong"></span>
+                                    <template x-if="mpReviewSummary(item).none">
+                                        <span x-text="' · — ' + mpReviewSummary(item).none"></span>
+                                    </template>
+                                </span>
+                            </summary>
+                            <div style="margin-top: 0.75rem;">
+                                <p style="font-weight: 600;" x-html="item.question"></p>
+                                <template x-if="item.imageUrl">
+                                    <div class="img-container">
+                                        <img :src="item.imageUrl" :alt="item.question" @error="handleImageError($event)" style="max-height: 300px;">
+                                    </div>
+                                </template>
+                                <div style="margin-top: 0.5rem;">
+                                    <template x-for="(opt, oIdx) in item.options" :key="oIdx">
+                                        <div class="option-button"
+                                             :class="oIdx === item.correctIndex ? 'correct' : ''"
+                                             style="margin-bottom: 0.4rem;">
+                                            <div>
+                                                <strong style="margin-right: 0.5rem;" x-text="['A)', 'B)', 'C)', 'D)', 'E)'][oIdx]"></strong>
+                                                <span x-html="opt"></span>
+                                            </div>
+                                            <i class="fa-solid" :class="oIdx === item.correctIndex ? 'fa-check' : ''"></i>
+                                        </div>
+                                    </template>
+                                </div>
+                                <template x-if="item.explanation">
+                                    <div style="margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--pico-border-radius); background-color: rgba(0, 0, 0, 0.1); border-left: 4px solid var(--pico-primary);">
+                                        <div style="font-weight: bold; color: var(--pico-primary); margin-bottom: 0.25rem;">
+                                            <i class="fa-solid fa-lightbulb"></i> <span x-text="t('explanation') + ':'"></span>
+                                        </div>
+                                        <div style="font-size: 0.95rem; color: var(--pico-color);" x-html="item.explanation"></div>
+                                    </div>
+                                </template>
+                            </div>
+                        </details>
+                    </template>
+                </div>
             </div>
         </main>
 

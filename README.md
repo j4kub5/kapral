@@ -2,7 +2,7 @@
 
 A lightweight, client-side quiz app for practicing small batches of questions (e.g. 10 at a time). Runs entirely in the browser — no build step, no server required. Your answer history is stored in `localStorage`, so repeats are automatically skipped and your progress persists between sessions.
 
-**[Play now →](https://j4kub5.github.io/kapral/)** — no installation, just open in your browser.
+**[Play now →](https://kapral-pk.onrender.com)** — no installation, just open in your browser. A static mirror (single-player only) is also hosted on GitHub Pages at `https://j4kub5.github.io/kapral/`.
 
 ## Features
 
@@ -46,9 +46,24 @@ The host's lobby shows a **QR code** that players scan to jump straight into the
 PUBLIC_URL=https://kapral.example.com npm start
 ```
 
+## Deploy to Render (free tier)
+
+The multiplayer server can be hosted publicly on [Render.com](https://render.com) for free. Deployment is driven by the blueprint in `server/render.yaml` — no manual server configuration needed.
+
+1. **Prereqs:** a [Render](https://render.com) account and this repo pushed to GitHub.
+2. In the Render dashboard: **New → Blueprint**.
+3. **Connect your GitHub repo** containing this project. Render reads `server/render.yaml` and creates the `kapral-pk` web service automatically (build `npm install`, start `npm start`, free plan).
+4. Render injects the `PORT` env var itself. The blueprint also sets `PUBLIC_URL=https://kapral-pk.onrender.com`, so QR codes and join URLs point at the public address.
+5. Wait for the first deploy to finish, then open `https://kapral-pk.onrender.com` and click **Multiplayer** to host or join a room.
+
+**Notes:**
+- The free tier spins down after ~15 minutes of inactivity; the first request after a gap takes a few extra seconds (cold start).
+- The static server only serves frontend files (`index.html`, `*.js`, `*.css`, `*.md`, `logo.png`, `packs/`) — the `server/` directory (including `node_modules/`) is **not** exposed publicly.
+- Rooms time out after 30 minutes of inactivity, and if the host disconnects the game ends — same behavior as the local server.
+
 ## Changelog
 
-### v0.2.99
+### v0.3.0
 - Multiplayer with a local Node.js + Socket.io server (`server/`): room codes, host uploads a `.md` pack, authoritative answer validation and scoring, live standings, results screen.
 - QR code in the host's lobby — scanning it opens the app with the room code pre-filled (join screen).
 - Room names — the host can name the room or get a random one (`Pokój-XXXX`); the room name and code stay visible on screen during the game.
@@ -57,6 +72,9 @@ PUBLIC_URL=https://kapral.example.com npm start
 - Full JSON save (history + configuration + user packs) with a restore action; user packs are Markdown-only and downloadable as `.md`.
 - GitHub icon next to the version number in the header.
 - Removed the -1 pt timeout penalty.
+- Public hosting on Render.com via blueprint `server/render.yaml` (service `kapral-pk`, free tier, `PUBLIC_URL` env).
+- The multiplayer server now serves **only** frontend files (`server/`, including `node_modules/`, is not exposed publicly).
+- Full browser E2E suite with headless Chromium (`cd server && npm run test:browser`).
 
 ### v0.2.2 (2026-08-01)
 - Timer controls visually grouped in the start panel with a subtle separator.
