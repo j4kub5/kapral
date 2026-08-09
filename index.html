@@ -40,27 +40,22 @@
             <nav style="margin: 0;">
                 <ul>
                     <li>
-                        <button class="outline secondary btn-sm" @click="toggleTheme()" :title="isDark ? t('themeToggleDark') : t('themeToggleLight')">
-                            <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i>
-                        </button>
-                    </li>
-                    <li>
                         <details class="dropdown">
-                            <summary class="outline secondary btn-sm" role="button">
-                                <i class="fa-solid fa-palette"></i>
+                            <summary class="outline secondary btn-sm" role="button" :title="t('settings')">
+                                <i class="fa-solid fa-sliders"></i>
                             </summary>
-                            <ul>
+                            <ul style="min-width: 13rem;">
+                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsTheme')"></small></li>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleTheme()"><i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i> <span x-text="isDark ? t('themeToggleDark') : t('themeToggleLight')"></span></a></li>
+                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsPalette')"></small></li>
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('pink')"><span class="palette-dot" style="background:#f06292;"></span><span x-text="t('palettePink')"></span></a></li>
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('cyan')"><span class="palette-dot" style="background:#4dd0e1;"></span><span x-text="t('paletteCyan')"></span></a></li>
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('sand')"><span class="palette-dot" style="background:#a1887f;"></span><span x-text="t('paletteSand')"></span></a></li>
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('slate')"><span class="palette-dot" style="background:#78909c;"></span><span x-text="t('paletteSlate')"></span></a></li>
+                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsLang')"></small></li>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleLang()"><span x-text="currentLang === 'pl' ? '🇬🇧' : '🇵🇱'"></span> <span x-text="currentLang === 'pl' ? 'English' : 'Polski'"></span></a></li>
                             </ul>
                         </details>
-                    </li>
-                    <li>
-                        <button class="outline secondary btn-sm" @click="toggleLang()" :title="currentLang === 'pl' ? 'Switch to English' : 'Przełącz na polski'">
-                            <span x-text="currentLang === 'pl' ? '🇬🇧' : '🇵🇱'"></span>
-                        </button>
                     </li>
                     <li>
                         <button x-show="!editingUsername" class="outline secondary btn-sm"

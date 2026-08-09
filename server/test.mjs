@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { parseMarkdown, shuffleQuestionOptions } from './parser.js';
 const URL = process.env.URL || 'http://localhost:3000';
 const md = `# Test Pack\n\n## Geo\n\n### Q1?\n- [ ] Alfa\n- [x] Bravo\n\n> Wyjaśnienie: bo Bravo\n\n### Q2?\n- [x] Charlie\n- [ ] Delta`;
 const host = io(URL);
@@ -63,3 +64,16 @@ function fail(step) {
 }
 
 setTimeout(() => { console.error('E2E TIMEOUT'); process.exit(1); }, 15000);
+
+// Shuffle invariants: answer always maps to the originally correct option text,
+// options are a permutation, and the original question object is not mutated.
+{
+    const parsed = parseMarkdown(`# P\n\n## K\n\n### Q?\n- [x] A0\n- [ ] A1\n- [ ] A2\n- [ ] A3`);
+    const original = parsed[0];
+    const shuffled = shuffleQuestionOptions(original);
+    if (shuffled.options.length !== 4) fail('shuffle: option count');
+    if (new Set(shuffled.options).size !== 4) fail('shuffle: not a permutation');
+    if (shuffled.options[shuffled.answer] !== original.options[original.answer]) fail('shuffle: answer points to wrong option');
+    if (original.options[0] !== 'A0' || original.answer !== 0) fail('shuffle: source question mutated');
+    console.log('Shuffle OK', JSON.stringify(shuffled));
+}

@@ -267,7 +267,7 @@ function quizApp() {
                 [pool[i], pool[j]] = [pool[j], pool[i]];
             }
             const count = this.questionCount === 0 ? pool.length : Math.min(this.questionCount, pool.length);
-            this.activeQuestions = pool.slice(0, count);
+            this.activeQuestions = pool.slice(0, count).map(shuffleQuestionOptions);
             this.startQuiz();
         },
 

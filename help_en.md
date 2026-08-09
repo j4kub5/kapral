@@ -50,6 +50,7 @@ Format:
 - Optional: image ![alt](URL) under H3
 - Optional: explanation > Explanation: ...
 - Mathematical formulas: use the $...$ syntax for LaTeX formulas, e.g., $\frac{a}{b}$, $x^2$, $\sqrt{x}$
+- If you include an explanation, it must describe not only why the correct answer is correct, but also why each of the incorrect options is wrong.
 
 Example:
 # Geography
@@ -61,7 +62,7 @@ Example:
 - [x] Paris
 - [ ] Berlin
 - [ ] Madrid
-> Explanation: Paris has been the capital of France since 987.
+> Explanation: Paris has been the capital of France since 987. London is the capital of the UK, Berlin of Germany, and Madrid of Spain, so none of them is the capital of France.
 
 ### What is $\sqrt{144}$?
 
@@ -73,7 +74,7 @@ Example:
 
 First, ask the user which category the questions should be from, and only then .
 
-Verify questions and answers with at least two sources. Pitfalls to avoid: the question contains the answer, the question suggests the answer, the correctness of the answer is debatable.
+Verify questions and answers with at least two sources. Pitfalls to avoid: the question contains the answer, the question suggests the answer, the correctness of the answer is debatable, incorrect options are ambiguous or merely "less correct" than the right one — each must be clearly false.
 
 In the next step, return the answer as a **markdown code block** (no tool use).
 ````

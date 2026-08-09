@@ -1,5 +1,5 @@
 // translations.js — i18n dictionary for PL/EN
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.3.1';
 let currentLang = localStorage.getItem('quiz_lang') || 'pl';
 
 const TRANSLATIONS = {
@@ -12,6 +12,10 @@ const TRANSLATIONS = {
         paletteCyan: 'Cyan',
         paletteSand: 'Piasek',
         paletteSlate: 'Łupkowy',
+        settings: 'Ustawienia',
+        settingsTheme: 'Motyw',
+        settingsPalette: 'Paleta',
+        settingsLang: 'Język',
         guest: 'Gość',
         room: 'Pokój',
         usernamePlaceholder: 'Nazwa użytkownika',
@@ -169,6 +173,10 @@ const TRANSLATIONS = {
         paletteCyan: 'Cyan',
         paletteSand: 'Sand',
         paletteSlate: 'Slate',
+        settings: 'Settings',
+        settingsTheme: 'Theme',
+        settingsPalette: 'Palette',
+        settingsLang: 'Language',
         guest: 'Guest',
         room: 'Room',
         usernamePlaceholder: 'Username',

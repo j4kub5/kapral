@@ -50,6 +50,7 @@ Format:
 - Opcjonalnie: obrazek ![alt](URL) pod H3
 - Opcjonalnie: wyjaśnienie > Wyjaśnienie: ...
 - Wzory matematyczne: używaj składni $...$ dla wzorów LaTeX, np. $\frac{a}{b}$, $x^2$, $\sqrt{x}$
+- Wyjaśnienie (jeśli dodajesz) musi opisywać nie tylko, dlaczego poprawna odpowiedź jest poprawna, ale też po co istnieje każda z odpowiedzi błędnych (dlaczego są niepoprawne
 
 Przykład:
 # Geografia
@@ -61,7 +62,7 @@ Przykład:
 - [x] Paryż
 - [ ] Berlin
 - [ ] Madryt
-> Wyjaśnienie: Paryż jest stolicą Francji od 987 roku.
+> Wyjaśnienie: Paryż jest stolicą Francji od 987 roku. Londyn to stolica Wielkiej Brytanii, Berlin — Niemiec, a Madryt — Hiszpanii, więc żadne z nich nie jest stolicą Francji.
 
 ### Ile wynosi $\sqrt{144}$?
 - [ ] 10
@@ -72,7 +73,7 @@ Przykład:
 
 Najpierw zapytaj użytkownika o to z jakiej kategorii mają być pytania.
 
-Pytania i odpowiedzi weryfikuj przynajmniej w dwóch źródłach. Pułapki, których masz unikać: pytanie zawiera odpowiedź, pytanie sugeruje odpowiedź, prawidłowość odpowiedzi jest dyskusyjna.
+Pytania i odpowiedzi weryfikuj przynajmniej w dwóch źródłach. Pułapki, których masz unikać: pytanie zawiera odpowiedź, pytanie sugeruje odpowiedź, prawidłowość odpowiedzi jest dyskusyjna, odpowiedzi błędne są niejednoznaczne lub tylko „mniej poprawne” niż właściwa — każda musi być wyraźnie fałszywa.
 
 W następnym kroku zwróć odpowiedź jako **blok kodu markdown** (no tool use).
 ```

@@ -25,6 +25,20 @@ function createQuestionObj(packName, category, rawText) {
     };
 }
 
+// Helper: Fisher-Yates shuffle — randomize option display order (neutralizes
+// the common AI bias of putting the correct answer first). Returns a copy so
+// the original pack (and its .md/.json export) stays untouched.
+function shuffleQuestionOptions(q) {
+    const idx = Array.from({ length: q.options.length }, (_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    const oldAnswer = q.answer;
+    const answer = oldAnswer >= 0 ? idx.indexOf(oldAnswer) : -1;
+    return { ...q, options: idx.map(i => q.options[i]), answer };
+}
+
 // Helper: Adaptive Markdown Parser using Marked.js (Flexible hierarchy: H1 = Pack, H2 = Category, H3 = Question)
 function parseMarkdownWithMarked(mdText) {
     const tokens = marked.lexer(mdText);
@@ -118,3 +132,4 @@ function parseMarkdownWithMarked(mdText) {
 }
 
 globalThis.parseMarkdownWithMarked = parseMarkdownWithMarked;
+globalThis.shuffleQuestionOptions = shuffleQuestionOptions;

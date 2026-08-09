@@ -63,6 +63,11 @@ The multiplayer server can be hosted publicly on [Render.com](https://render.com
 
 ## Changelog
 
+### v0.3.1
+- Answer options are now shuffled when a quiz starts (single-player and multiplayer) to neutralize AI-generated "always-correct-first" bias.
+- Header consolidated into a single settings button (`fa-sliders`) for theme, palette, and language.
+- AI question prompt in Help now requires explanations to describe why each wrong option is wrong (and forbids ambiguous distractors).
+
 ### v0.3.0
 - Multiplayer with a local Node.js + Socket.io server (`server/`): room codes, host uploads a `.md` pack, authoritative answer validation and scoring, live standings, results screen.
 - QR code in the host's lobby — scanning it opens the app with the room code pre-filled (join screen).

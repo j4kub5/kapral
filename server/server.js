@@ -6,7 +6,7 @@ import express from 'express';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import QRCode from 'qrcode';
-import { parseMarkdown } from './parser.js';
+import { parseMarkdown, shuffleQuestionOptions } from './parser.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -181,7 +181,7 @@ io.on('connection', (socket) => {
         const room = getRoomOf(socket);
         if (!room) return ack({ ok: false, error: 'no-room' });
         if (socket.id !== room.hostSocketId) return ack({ ok: false, error: 'not-host' });
-        const questions = parseMarkdown(markdown);
+        const questions = parseMarkdown(markdown).map(shuffleQuestionOptions);
         if (questions.length === 0) return ack({ ok: false, error: 'no-questions' });
         room.questions = questions;
         room.lastActivity = Date.now();
