@@ -4,13 +4,13 @@ import os from 'os';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import { Server } from 'socket.io';
-import cors from 'cors';
 import QRCode from 'qrcode';
 import { parseMarkdown, shuffleQuestionOptions } from './parser.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 200;
+const MAX_MARKDOWN_BYTES = 500 * 1024;
 const ROOM_TTL_MS = 30 * 60 * 1000;
 const REVEAL_DELAY_MS = 3000;
 
@@ -26,7 +26,6 @@ function getLanIp() {
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://${getLanIp()}:${PORT}`;
 
 const app = express();
-app.use(cors());
 // Serwuj tylko pliki frontendu (reszta repo, w tym server/, jest prywatna).
 const ROOT_DIR = path.join(__dirname, '..');
 const PUBLIC_FILES = ['index.html', 'styles.css', 'logo.png', 'app.js', 'parser.js', 'mp.js', 'translations.js', 'help_pl.md', 'help_en.md'];
@@ -112,6 +111,9 @@ function endGame(room) {
     broadcastRoom(room, 'game-end', { results: playerList(room), review });
 }
 
+function sanitizeNick(n) { return String(n || '').trim().slice(0, 20); }
+function sanitizeName(n) { return String(n || '').trim().slice(0, 30); }
+
 io.on('connection', (socket) => {
     socket.data.roomId = null;
 
@@ -120,9 +122,9 @@ io.on('connection', (socket) => {
         const room = {
             roomId,
             code: genCode(),
-            name: roomName || 'Room',
+            name: sanitizeName(roomName) || 'Room',
             hostSocketId: socket.id,
-            hostNickname: nickname || 'Host',
+            hostNickname: sanitizeNick(nickname) || 'Host',
             hostPlays: !!hostPlays,
             players: [],
             questions: [],
@@ -145,7 +147,7 @@ io.on('connection', (socket) => {
         } catch {
             // QR niekrytyczny — gracze mogą wpisać kod ręcznie
         }
-        ack({ ok: true, roomId, code: room.code, name: room.name, players: playerList(room), qr, joinUrl });
+        ack({ ok: true, roomId, code: room.code, name: room.name, players: playerList(room), qr });
     });
 
     socket.on('set-host-plays', ({ hostPlays }, ack) => {
@@ -168,7 +170,7 @@ io.on('connection', (socket) => {
         if (room.players.length >= MAX_PLAYERS) return ack({ ok: false, error: 'room-full' });
         if (room.started) return ack({ ok: false, error: 'game-in-progress' });
 
-        const player = { id: socket.id, nickname: nickname || 'Player', score: 0, isHost: false, answered: false, answers: [] };
+        const player = { id: socket.id, nickname: sanitizeNick(nickname) || 'Player', score: 0, isHost: false, answered: false, answers: [] };
         room.players.push(player);
         socket.join(room.roomId);
         socket.data.roomId = room.roomId;
@@ -181,6 +183,7 @@ io.on('connection', (socket) => {
         const room = getRoomOf(socket);
         if (!room) return ack({ ok: false, error: 'no-room' });
         if (socket.id !== room.hostSocketId) return ack({ ok: false, error: 'not-host' });
+        if (typeof markdown !== 'string' || markdown.length > MAX_MARKDOWN_BYTES) return ack({ ok: false, error: 'pack-too-large' });
         const questions = parseMarkdown(markdown).map(shuffleQuestionOptions);
         if (questions.length === 0) return ack({ ok: false, error: 'no-questions' });
         room.questions = questions;
@@ -216,6 +219,7 @@ io.on('connection', (socket) => {
         if (!player || player.answered) return;
         const q = room.questions[room.currentIndex];
         if (!q) return;
+        if (!Number.isInteger(answer) || answer < 0 || answer >= q.options.length) return;
 
         player.answered = true;
         player.answers[room.currentIndex] = answer;

@@ -18,6 +18,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <script src="translations.js"></script>
     <script src="parser.js"></script>
     <script src="mp.js"></script>
@@ -54,6 +55,15 @@
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('slate')"><span class="palette-dot" style="background:#78909c;"></span><span x-text="t('paletteSlate')"></span></a></li>
                                 <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsLang')"></small></li>
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleLang()"><span x-text="currentLang === 'pl' ? '🇬🇧' : '🇵🇱'"></span> <span x-text="currentLang === 'pl' ? 'English' : 'Polski'"></span></a></li>
+                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('aiKeyLabel')"></small></li>
+                                <li style="padding: 0.25rem 0.75rem;">
+                                    <input x-model="geminiKey" type="password" style="margin:0;" :placeholder="t('aiKeyPlaceholder')" @keydown.enter.prevent="$el.closest('details').open = false; setGeminiKey(geminiKey)">
+                                </li>
+                                <li style="padding: 0.25rem 0.75rem; display:flex; gap:0.5rem;">
+                                    <button x-show="geminiKey" class="btn-sm" @click.prevent="$el.closest('details').open = false; setGeminiKey(geminiKey)" x-text="t('aiKeySave')"></button>
+                                    <button x-show="geminiKey" class="btn-sm outline" @click.prevent="$el.closest('details').open = false; setGeminiKey('')" x-text="t('aiKeyRemove')"></button>
+                                </li>
+                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('aiKeyHint')"></small></li>
                             </ul>
                         </details>
                     </li>
@@ -186,6 +196,44 @@
                 <article aria-busy="true" x-text="t('loading')"></article>
             </template>
 
+            <!-- Action tiles (always first) -->
+            <div style="margin-bottom: 1.5rem;">
+                <div class="grid-batches">
+                    <!-- Upload card -->
+                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;">
+                        <label style="margin: 0; cursor: pointer; text-align: center; color: var(--pico-muted-color);">
+                            <i class="fa-solid fa-plus" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <span x-text="t('uploadLabel')"></span>
+                            <input type="file" @change="handleFileUpload($event)" accept=".md" style="display: none;">
+                        </label>
+                    </article>
+
+                    <!-- Paste markdown card -->
+                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="pasteMarkdown()">
+                        <div style="text-align: center; color: var(--pico-muted-color);">
+                            <i class="fa-solid fa-clipboard" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <span x-text="t('pasteMarkdown')"></span>
+                        </div>
+                    </article>
+
+                    <!-- AI generation card -->
+                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="openAIGenerate()">
+                        <div style="text-align: center; color: var(--pico-muted-color);">
+                            <i class="fa-solid fa-wand-magic-sparkles" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <span x-text="t('aiGenerate')"></span>
+                        </div>
+                    </article>
+
+                    <!-- Infinite AI Quiz card -->
+                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="openInfiniteAIModal()">
+                        <div style="text-align: center; color: var(--pico-muted-color);">
+                            <i class="fa-solid fa-infinity" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <span x-text="t('aiInfiniteTitle')"></span>
+</div>
+                    </article>
+                </div>
+            </div>
+
             <!-- User Packs -->
             <div>
                 <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user"></i> <span x-text="t('myPacks')"></span></h4>
@@ -212,23 +260,6 @@
                             <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin: 0;" x-text="[...new Set(pack.questions.map(q => q.category))].join(', ')"></p>
                         </article>
                     </template>
-
-                    <!-- Upload card -->
-                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;">
-                        <label style="margin: 0; cursor: pointer; text-align: center; color: var(--pico-muted-color);">
-                            <i class="fa-solid fa-plus" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
-                            <span x-text="t('uploadLabel')"></span>
-                            <input type="file" @change="handleFileUpload($event)" accept=".md" style="display: none;">
-                        </label>
-                    </article>
-
-                    <!-- Paste markdown card -->
-                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="pasteMarkdown()">
-                        <div style="text-align: center; color: var(--pico-muted-color);">
-                            <i class="fa-solid fa-clipboard" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
-                            <span x-text="t('pasteMarkdown')"></span>
-                        </div>
-                    </article>
                 </div>
             </div>
 
@@ -262,8 +293,22 @@
         <main x-show="view === 'quiz'" x-transition
               x-init="$watch('view', v => { if (v === 'quiz') $nextTick().then(() => MathJax.typesetPromise?.()) })">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                <span class="category-badge" x-text="currentQuestion?.category || 'Ogólne'"></span>
-                <small x-text="t('questionOf', { n: currentPointer + 1, total: activeQuestions.length })"></small>
+                <span style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <span class="category-badge" x-text="currentQuestion?.category || 'Ogólne'"></span>
+                    <template x-if="aiInfiniteActive">
+                        <span class="category-badge" style="cursor: pointer; border-style: dashed;" @click="openCategoryModal()">
+                            <i class="fa-solid fa-infinity"></i>
+                            <span x-text="aiInfiniteSubtopic || aiInfiniteTopic"></span>
+                            <i class="fa-solid fa-angle-down" style="font-size: 0.7rem;"></i>
+                        </span>
+                    </template>
+                </span>
+                <small>
+                    <span x-text="t('questionOf', { n: currentPointer + 1, total: activeQuestions.length })"></span>
+                    <template x-if="aiInfiniteActive && aiInfiniteGenerating">
+                        <span><i class="fa-solid fa-spinner fa-spin" style="font-size: 0.7rem; margin-left: 0.3rem;"></i></span>
+                    </template>
+                </small>
             </div>
 
             <progress :value="currentPointer + 1" :max="activeQuestions.length"></progress>
@@ -319,6 +364,13 @@
                 </div>
             </article>
 
+            <div x-show="aiInfiniteActive && aiInfiniteGenerating && (activeQuestions.length - currentPointer <= 3)"
+                 style="text-align: center; margin-top: 1rem;" x-transition>
+                <article style="padding: 0.75rem;">
+                    <i class="fa-solid fa-spinner fa-spin"></i> <span x-text="t('aiInfiniteMore')"></span>
+                </article>
+            </div>
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
                     <button class="outline secondary btn-auto" @click="showDashboard()">
@@ -326,6 +378,9 @@
                     </button>
                     <button class="outline secondary btn-auto" x-show="currentPointer > 0" @click="previousQuestion()">
                         <i class="fa-solid fa-chevron-left"></i> <span x-text="t('prev')"></span>
+                    </button>
+                    <button class="outline secondary btn-auto" x-show="aiInfiniteActive" @click="stopInfiniteQuiz()">
+                        <i class="fa-solid fa-stop"></i> <span x-text="t('aiInfiniteStop')"></span>
                     </button>
                 </div>
                 <button class="btn-auto" :disabled="!answeredCurrent" @click="nextQuestion()">
@@ -343,8 +398,8 @@
                 <h2 x-text="t('seriesFinished')"></h2>
                 <p style="color: var(--pico-muted-color);" x-text="t('resultText')"></p>
 
-                <div style="font-size: 3.5rem; font-weight: 800; color: var(--pico-primary); margin: 1rem 0 0.5rem 0;" x-text="batchScore + ' / ' + activeQuestions.length"></div>
-                <p style="font-weight: 600;" x-text="Math.round((batchScore / activeQuestions.length) * 100) + '% ' + t('correctAnswers')"></p>
+                <div style="font-size: 3.5rem; font-weight: 800; color: var(--pico-primary); margin: 1rem 0 0.5rem 0;" x-text="batchScore + ' / ' + quizAnsweredTotal"></div>
+                <p style="font-weight: 600;" x-text="Math.round((batchScore / (quizAnsweredTotal || 1)) * 100) + '% ' + t('correctAnswers')"></p>
                 <div x-show="timerEnabled" style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 1rem; color: var(--pico-muted-color); font-size: 0.9rem;">
                     <span x-text="t('timedOutCount') + ': ' + timeoutCount"></span>
                     <span x-text="t('avgTime') + ': ' + avgTime + t('seconds')"></span>
@@ -723,6 +778,85 @@
             </footer>
         </article>
     </dialog>
+
+    <!-- AI generation modal -->
+    <div class="modal-backdrop" x-show="aiModalVisible" x-transition @click.self="closeAIGenerate()">
+        <article style="max-width: 26rem; margin: 0;">
+            <header>
+                <button aria-label="Close" rel="prev" @click="closeAIGenerate()"></button>
+                <p><strong x-text="t('aiGenerate')"></strong></p>
+            </header>
+            <label x-text="t('aiTopic')"></label>
+            <input x-model="aiTopic" :placeholder="t('aiTopicPlaceholder')" @keydown.enter.prevent="generateQuestions()">
+            <label x-text="t('aiCount')"></label>
+            <input type="number" x-model="aiCount" min="1" max="20">
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                <input type="checkbox" x-model="aiUseWiki" style="margin: 0;">
+                <span x-text="t('aiUseWiki')"></span>
+            </label>
+            <small style="color: var(--pico-muted-color);" x-text="t('aiSearchWiki')"></small>
+            <p x-show="aiError" style="color: #e53935; margin: 0.5rem 0 0;" x-text="aiError"></p>
+            <footer>
+                <button class="secondary" @click="closeAIGenerate()" x-text="t('aiCancel')" :disabled="aiLoading"></button>
+                <button @click="generateQuestions()" :disabled="aiLoading">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="aiLoading"></i>
+                    <span x-text="aiLoading ? t('aiGenerating') : t('aiGenerateBtn')"></span>
+                </button>
+            </footer>
+            <div x-show="aiLoading" style="text-align: center; margin-top: 0.5rem;">
+                <small style="color: var(--pico-muted-color);">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span x-text="t('aiStep_' + aiStep)"></span>
+                </small>
+            </div>
+        </article>
+    </div>
+
+    <!-- Infinite AI quiz start modal -->
+    <div class="modal-backdrop" x-show="aiInfiniteModalVisible" x-transition @click.self="closeInfiniteAIModal()">
+        <article style="max-width: 26rem; margin: 0;">
+            <header>
+                <button aria-label="Close" rel="prev" @click="closeInfiniteAIModal()"></button>
+                <p><strong x-text="t('aiInfiniteTitle')"></strong></p>
+            </header>
+            <p style="color: var(--pico-muted-color); margin-top: 0;" x-text="t('aiInfiniteDesc')"></p>
+            <label x-text="t('aiInfiniteTopicLabel')"></label>
+            <input x-model="aiInfiniteTopic" :placeholder="t('aiTopicPlaceholder')" @keydown.enter.prevent="startInfiniteAIQuiz()">
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                <input type="checkbox" x-model="aiUseWiki" style="margin: 0;">
+                <span x-text="t('aiUseWiki')"></span>
+            </label>
+            <footer>
+                <button class="secondary" @click="closeInfiniteAIModal()" x-text="t('aiCancel')" :disabled="aiInfiniteLoading"></button>
+                <button @click="startInfiniteAIQuiz()" :disabled="aiInfiniteLoading">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="aiInfiniteLoading"></i>
+                    <span x-text="aiInfiniteLoading ? t('aiGenerating') : t('aiInfiniteStart')"></span>
+                </button>
+            </footer>
+        </article>
+    </div>
+
+    <!-- Infinite AI category modal -->
+    <div class="modal-backdrop" x-show="aiCategoryModalVisible" x-transition @click.self="closeCategoryModal()">
+        <article style="max-width: 26rem; margin: 0;">
+            <header>
+                <button aria-label="Close" rel="prev" @click="closeCategoryModal()"></button>
+                <p><strong x-text="t('aiInfiniteChangeCategory')"></strong></p>
+            </header>
+            <p x-show="!aiInfiniteSuggestions.length" style="color: var(--pico-muted-color);" x-text="t('aiInfiniteNoSuggestions')"></p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <template x-for="s in aiInfiniteSuggestions" :key="s">
+                    <button class="outline" style="flex: 1 1 auto;" @click="applyInfiniteSubtopic(s)" x-text="s"></button>
+                </template>
+            </div>
+            <label x-text="t('aiInfiniteCustomCategory')"></label>
+            <input x-model="aiCategoryCustom" :placeholder="t('aiInfiniteCustomCategory')" @keydown.enter.prevent="applyInfiniteSubtopic(aiCategoryCustom)">
+            <footer>
+                <button class="secondary" @click="closeCategoryModal()" x-text="t('aiCancel')"></button>
+                <button @click="applyInfiniteSubtopic(aiCategoryCustom)" x-text="t('aiInfiniteApply')"></button>
+            </footer>
+        </article>
+    </div>
 
 </body>
 </html>

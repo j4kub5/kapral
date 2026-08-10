@@ -13,6 +13,8 @@ A lightweight, client-side quiz app for practicing small batches of questions (e
 - **i18n** — fully translated into Polish and English with a header toggle 🇵🇱/🇬🇧.
 - **Persistent answer history** — stored in `localStorage`, exportable as a full JSON save (history + configuration + user packs) and restorable on any instance.
 - **Import your own questions** — upload a `.md` file or paste Markdown directly; your packs survive a page refresh and can be downloaded back as `.md`.
+- **AI question generation** — generate quiz packs from a topic with the Gemini API (free key set in settings; results land as an `AI:` pack).
+- **Infinite AI Quiz** — AI generates questions in the background while you play, with AI-suggested category steering.
 - **Themes & palettes** — light/dark mode plus several color palettes.
 - **Multiplayer** — play against friends on a local server (`server/`, Node.js + Socket.io). Room names, join codes, QR join, live standings.
 - **Math formulas** — LaTeX rendering via `$...$` syntax (MathJax).
@@ -62,6 +64,14 @@ The multiplayer server can be hosted publicly on [Render.com](https://render.com
 - Rooms time out after 30 minutes of inactivity, and if the host disconnects the game ends — same behavior as the local server.
 
 ## Changelog
+
+### v0.4.0
+- AI question generation with the Gemini API — generate quiz packs from a topic (free key set in settings, results land as an `AI:` pack).
+- **Infinite AI Quiz** — AI generates questions in the background while you play; category steering with AI-suggested chips + custom input.
+- Wikipedia integration refactored: full article extracts (`prop=extracts`) with a 3-step fallback (direct lookup → search → OpenSearch), context limit raised to 5000 chars, fetched per batch.
+- Background-generation progress indicators: step text during AI generation, spinner in the question counter, early "generating" overlay.
+- Action tiles (Upload, Paste, Generate AI, Infinite AI Quiz) moved to the top of the dashboard.
+- Security hardening: DOMPurify sanitization for multiplayer-received questions and JSON-imported packs, plus server-side input size limits (nickname/room name/markdown/answer).
 
 ### v0.3.1
 - Answer options are now shuffled when a quiz starts (single-player and multiplayer) to neutralize AI-generated "always-correct-first" bias.

@@ -35,9 +35,17 @@
 6. Nazwa pokoju i kod są widoczne na ekranie przez całą grę.
 7. Serwer weryfikuje odpowiedzi i liczy punkty — wynik końcowy widzisz na ekranie.
 
+## 🤖 Generowanie pytań AI w aplikacji
+
+1. W ustawieniach (ikona zębatki) w sekcji „Klucz API Gemini" wklej darmowy klucz z [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (bez karty kredytowej) i zapisz.
+2. Na ekranie pakietów kliknij kartę **Generuj pytania AI**.
+3. Wpisz temat (np. „średniowiecze", „biologia komórki") i kliknij Generuj.
+4. Wygenerowane pytania trafiają jako nowy pakiet `AI: <temat>` w sekcji „Moje pakiety" — zaznacz go i graj.
+5. Aby usunąć klucz, użyj przycisku „Usuń klucz" w ustawieniach.
+
 ## ✨ Prompt do generowania pytań (AI)
 
-Skopiuj poniższy prompt i wklej do ChatGPT / Claude / innego AI, aby wygenerować pytania:
+Skopiuj poniższy prompt i wklej do zewnętrznego narzędzia AI (ChatGPT / Claude / inne), aby wygenerować pytania:
 
 ```
 Wygeneruj pytania quizowe jednokrotnego wyboru.

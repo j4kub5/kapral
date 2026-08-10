@@ -35,9 +35,17 @@
 6. The room name and code stay visible on screen throughout the game.
 7. The server validates answers and keeps score — you see the final standings on screen.
 
+## 🤖 AI Question Generation in the app
+
+1. In the settings (gear icon), paste a free key from [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (no credit card needed) into the "Gemini API key" section and save.
+2. On the packs screen, click the **Generate AI questions** card.
+3. Enter a topic (e.g. "medieval history", "cell biology") and click Generate.
+4. The generated questions land as a new `AI: <topic>` pack in "My packs" — select it and play.
+5. To remove the key, use the "Remove key" button in settings.
+
 ## ✨ AI Question Generation Prompt
 
-Copy the prompt below and paste it into ChatGPT / Claude / other AI to generate quiz questions:
+Copy the prompt below and paste it into an external AI tool (ChatGPT / Claude / other) to generate quiz questions:
 
 ````
 Generate multiple-choice quiz questions.

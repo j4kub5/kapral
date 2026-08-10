@@ -35,6 +35,24 @@ function quizApp() {
         totalTimeUsed: 0,
         answeredCount: 0,
         answers: [],
+        geminiKey: localStorage.getItem('quiz_gemini_key') || '',
+        aiTopic: '',
+        aiCount: 10,
+        aiUseWiki: true,
+        aiLoading: false,
+        aiStep: '',
+        aiError: '',
+        aiModalVisible: false,
+        geminiModel: 'gemini-3.6-flash',
+        aiInfiniteActive: false,
+        aiInfiniteTopic: '',
+        aiInfiniteSubtopic: '',
+        aiInfiniteSuggestions: [],
+        aiInfiniteLoading: false,
+        aiInfiniteGenerating: false,
+        aiInfiniteModalVisible: false,
+        aiCategoryModalVisible: false,
+        aiCategoryCustom: '',
 
         ...mpMixin(),
 
@@ -80,6 +98,13 @@ function quizApp() {
                 const stored = JSON.parse(localStorage.getItem('quiz_user_packs') || '[]');
                 stored.forEach(p => {
                     if (p.name && Array.isArray(p.questions)) {
+                        const purify = (s) => (typeof DOMPurify !== 'undefined' && typeof s === 'string') ? DOMPurify.sanitize(s) : s;
+                        p.questions = p.questions.map(q => ({
+                            ...q,
+                            question: purify(q.question),
+                            options: Array.isArray(q.options) ? q.options.map(purify) : q.options,
+                            explanation: q.explanation ? purify(q.explanation) : undefined,
+                        }));
                         this.packs.push({ name: p.name, source: 'user', questions: p.questions, selected: false });
                     }
                 });
@@ -163,6 +188,7 @@ function quizApp() {
             localStorage.setItem('quiz_history', JSON.stringify(this.history));
             this.lastRank = this.rankName;
             localStorage.setItem('quiz_lastRank', this.lastRank);
+            if (this.aiInfiniteActive) this.ensureInfiniteGeneration();
             this.timeoutAdvanceTimer = setTimeout(() => this.nextQuestion(), 3000);
         },
 
@@ -244,6 +270,7 @@ function quizApp() {
 
         showDashboard() {
             this.stopTimer();
+            this.aiInfiniteActive = false;
             this.view = 'dashboard';
         },
 
@@ -317,6 +344,10 @@ function quizApp() {
             return this.answeredCount > 0 ? Math.round(this.totalTimeUsed / this.answeredCount) : 0;
         },
 
+        get quizAnsweredTotal() {
+            return this.answers.filter(Boolean).length;
+        },
+
         selectOption(optIdx) {
             if (this.answeredCurrent) return;
             this.answeredCurrent = true;
@@ -340,6 +371,7 @@ function quizApp() {
             localStorage.setItem('quiz_history', JSON.stringify(this.history));
             this.lastRank = this.rankName;
             localStorage.setItem('quiz_lastRank', this.lastRank);
+            if (this.aiInfiniteActive) this.ensureInfiniteGeneration();
         },
 
         getOptionState(oIdx) {
@@ -366,6 +398,7 @@ function quizApp() {
                     this.startTimer();
                 }
             } else {
+                if (this.aiInfiniteActive && this.aiInfiniteGenerating) return;
                 this.stopTimer();
                 this.view = 'results';
             }
@@ -407,6 +440,13 @@ function quizApp() {
         },
 
         pushUserPack(parsed, name) {
+            // Sanitize all HTML fields before they hit the DOM (x-html): covers
+            // uploads, pasted markdown and AI output alike (AGENTS §6.3).
+            for (const q of parsed) {
+                q.question = DOMPurify.sanitize(q.question);
+                q.explanation = DOMPurify.sanitize(q.explanation);
+                q.options = q.options.map(o => DOMPurify.sanitize(o));
+            }
             const packName = parsed[0]?.packName || name || t('userBadge');
             this.packs.push({ name: packName, source: 'user', questions: parsed, selected: true });
             this.persistUserPacks();
@@ -630,6 +670,289 @@ function quizApp() {
                 localStorage.setItem('quiz_lastRank', this.lastRank);
                 this.showToast(t('historyCleared'));
             }
+        },
+
+        setGeminiKey(key) {
+            const trimmed = (key || '').trim();
+            this.geminiKey = trimmed;
+            if (trimmed) {
+                localStorage.setItem('quiz_gemini_key', trimmed);
+                this.showToast(t('aiKeySaved'));
+            }
+            else {
+                localStorage.removeItem('quiz_gemini_key');
+                this.showToast(t('aiKeyRemoved'));
+            }
+        },
+
+        openAIGenerate() {
+            if (!this.geminiKey) {
+                this.showToast(t('aiNoKey'));
+                return;
+            }
+            this.aiTopic = '';
+            this.aiCount = 10;
+            this.aiUseWiki = true;
+            this.aiError = '';
+            this.aiModalVisible = true;
+        },
+
+        closeAIGenerate() {
+            if (this.aiLoading) return;
+            this.aiStep = '';
+            this.aiModalVisible = false;
+        },
+
+        async generateQuestions() {
+            if (this.aiLoading) return;
+            const topic = (this.aiTopic || '').trim();
+            if (!topic) { this.aiError = t('aiNoTopic'); return; }
+
+            this.aiLoading = true;
+            this.aiError = '';
+            try {
+                const lang = currentLang;
+                const wiki = lang === 'en' ? 'en.wikipedia.org' : 'pl.wikipedia.org';
+                this.aiStep = 'wiki';
+                const context = this.aiUseWiki ? await this.fetchWikiContext(wiki, topic) : (this.aiStep = 'generating', '');
+                this.aiStep = 'generating';
+                const prompt = this.buildAIQuestionPrompt(lang, topic, this.aiCount, context);
+                const md = await this.callGemini(prompt);
+                this.aiStep = 'parsing';
+                const parsed = parseMarkdownWithMarked(md);
+                if (!parsed.length) throw new Error(t('aiEmptyResult'));
+                const valid = parsed.filter(q => q.answer >= 0);
+                if (!valid.length) throw new Error(t('aiEmptyResult'));
+                valid[0].packName = 'AI: ' + topic;
+                this.pushUserPack(valid);
+                this.aiModalVisible = false;
+            } catch (err) {
+                this.aiError = t('aiError') + (err.message || '');
+            } finally {
+                this.aiStep = '';
+                this.aiLoading = false;
+            }
+        },
+
+        openInfiniteAIModal() {
+            if (!this.geminiKey) { this.showToast(t('aiNoKey')); return; }
+            this.aiInfiniteModalVisible = true;
+        },
+
+        closeInfiniteAIModal() {
+            if (this.aiInfiniteLoading) return;
+            this.aiInfiniteModalVisible = false;
+        },
+
+        async startInfiniteAIQuiz() {
+            if (this.aiInfiniteLoading) return;
+            const topic = (this.aiInfiniteTopic || '').trim();
+            if (!topic) { this.showToast(t('aiNoTopic')); return; }
+            this.aiInfiniteLoading = true;
+            this.aiInfiniteActive = true;
+            this.aiInfiniteSubtopic = '';
+            this.aiInfiniteSuggestions = [];
+            this.activeQuestions = [];
+            try {
+                const questions = await this.generateInfiniteBatch();
+                if (!questions.length) {
+                    this.aiInfiniteActive = false;
+                    return;
+                }
+                const tempPack = { name: 'AI: ' + topic, source: 'ai_infinite', questions, selected: true };
+                this.packs = [tempPack, ...this.packs.filter(p => p.source !== 'ai_infinite')];
+                this.questionCount = 0;
+                this.filterOutAnswered = false;
+                this.startQuizFromPacks();
+                this.aiInfiniteModalVisible = false;
+                this.generateInfiniteSuggestions();
+            } catch (err) {
+                this.aiInfiniteActive = false;
+                this.showToast(t('aiError') + (err.message || ''));
+            } finally {
+                this.aiInfiniteLoading = false;
+            }
+        },
+
+        async generateInfiniteBatch() {
+            if (this.aiInfiniteGenerating) return [];
+            this.aiInfiniteGenerating = true;
+            try {
+                const lang = currentLang;
+                const wiki = lang === 'en' ? 'en.wikipedia.org' : 'pl.wikipedia.org';
+                const topic = this.aiInfiniteSubtopic || this.aiInfiniteTopic;
+                const context = this.aiUseWiki ? await this.fetchWikiContext(wiki, topic) : '';
+                const recent = this.activeQuestions.slice(-3).map(q => q.question).join('\n- ');
+                const count = this.activeQuestions.length === 0 ? 10 : 5;
+                const prompt = this.buildAIQuestionPrompt(lang, topic, count, context, recent);
+                const md = await this.callGemini(prompt);
+                const parsed = parseMarkdownWithMarked(md);
+                const valid = parsed.filter(q => q.answer >= 0);
+                if (!valid.length) throw new Error(t('aiEmptyResult'));
+                valid.forEach(q => { q.packName = 'AI: ' + this.aiInfiniteTopic; });
+                const shuffled = valid.map(shuffleQuestionOptions);
+                if (this.aiInfiniteActive && this.view === 'quiz') {
+                    this.activeQuestions.push(...shuffled);
+                    return [];
+                }
+                return shuffled;
+            } catch (err) {
+                this.showToast(t('aiInfiniteFailed'));
+                return [];
+            } finally {
+                this.aiInfiniteGenerating = false;
+            }
+        },
+
+        async generateInfiniteSuggestions() {
+            if (!this.aiInfiniteActive) return;
+            const lang = currentLang;
+            const prompt = lang === 'en'
+                ? `Topic: "${this.aiInfiniteTopic}"\nCurrent subtopic: "${this.aiInfiniteSubtopic || 'general'}".\nSuggest 3 NEW specific subcategories for further quiz questions.\nReturn ONLY the 3 names, one per line, no bullets, no markdown.`
+                : `Temat: "${this.aiInfiniteTopic}"\nAktualna podkategoria: "${this.aiInfiniteSubtopic || 'ogólna'}".\nZasugeruj 3 NOWE konkretne podkategorie dla kolejnych pytań quizu.\nZwróć TYLKO 3 nazwy, każdą w osobnej linii, bez wypunktowania, bez markdown.`;
+            try {
+                const md = await this.callGemini(prompt);
+                const names = (md || '').split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 3);
+                this.aiInfiniteSuggestions = names;
+            } catch {
+                this.aiInfiniteSuggestions = [];
+            }
+        },
+
+        openCategoryModal() {
+            this.aiCategoryCustom = '';
+            this.aiCategoryModalVisible = true;
+        },
+
+        closeCategoryModal() {
+            this.aiCategoryModalVisible = false;
+        },
+
+        applyInfiniteSubtopic(sub) {
+            const next = (sub || '').trim();
+            if (!next) return;
+            this.aiInfiniteSubtopic = next;
+            this.aiCategoryModalVisible = false;
+            if (this.aiInfiniteActive && this.view === 'quiz' && !this.aiInfiniteGenerating) {
+                this.generateInfiniteBatch();
+            }
+            this.generateInfiniteSuggestions();
+        },
+
+        stopInfiniteQuiz() {
+            if (!this.aiInfiniteActive) return;
+            this.stopTimer();
+            this.view = 'results';
+            this.showToast(t('aiInfiniteStopped'));
+        },
+
+        ensureInfiniteGeneration() {
+            if (!this.aiInfiniteActive || this.aiInfiniteGenerating) return;
+            const remaining = this.activeQuestions.length - this.currentPointer;
+            if (remaining <= 3) {
+                this.generateInfiniteBatch();
+            }
+        },
+
+        async _wikiExtract(host, title) {
+            const url = `https://${host}/w/api.php?action=query&prop=extracts&titles=${encodeURIComponent(title)}&exintro=true&explaintext=true&redirects=true&format=json&origin=*`;
+            const res = await fetch(url);
+            if (!res.ok) return '';
+            const data = await res.json();
+            const page = Object.values(data.query?.pages || {})[0];
+            return page?.extract || '';
+        },
+
+        async _wikiSearchExtract(host, topic) {
+            const url = `https://${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topic)}&srlimit=1&format=json&origin=*`;
+            const res = await fetch(url);
+            if (!res.ok) return '';
+            const data = await res.json();
+            const first = data.query?.search?.[0];
+            if (!first) return '';
+            return this._wikiExtract(host, first.title);
+        },
+
+        async _wikiOpenSearchExtract(host, topic) {
+            const url = `https://${host}/w/api.php?action=opensearch&search=${encodeURIComponent(topic)}&limit=1&format=json&origin=*`;
+            const res = await fetch(url);
+            if (!res.ok) return '';
+            const data = await res.json();
+            const title = data?.[1]?.[0];
+            if (!title) return '';
+            return this._wikiExtract(host, title);
+        },
+
+        async fetchWikiContext(host, topic) {
+            try {
+                let extract = await this._wikiExtract(host, topic);
+                if (!extract) extract = await this._wikiSearchExtract(host, topic);
+                if (!extract) extract = await this._wikiOpenSearchExtract(host, topic);
+                return extract.slice(0, 5000);
+            } catch (err) {
+                console.warn('Wiki fetch failed:', err);
+                return '';
+            }
+        },
+
+        buildAIQuestionPrompt(lang, topic, count, context, recent) {
+            const isEn = lang === 'en';
+            const head = isEn
+                ? `Generate exactly ${count} multiple-choice quiz questions (single correct answer) about the topic: "${topic}".`
+                : `Wygeneruj dokładnie ${count} pytań quizowych jednokrotnego wyboru na temat: "${topic}".`;
+            const recall = recent
+                ? (isEn
+                    ? `Recently asked questions (do not repeat or closely paraphrase these):\n- ${recent}`
+                    : `Ostatnio zadane pytania (nie powtarzaj ich ani nie parafrazuj zbyt blisko):\n- ${recent}`)
+                : '';
+            const format = isEn
+                ? `Format:
+- H1 (#): "${topic}" package name
+- H2 (##): question category, single word
+- H3 (###): the question text
+- Options: task list (- [x] correct, - [ ] incorrect)
+- Optional: explanation > Explanation: ...
+If you include an explanation, describe not only why the correct answer is correct, but also why each wrong option is false.`
+                : `Format:
+- H1 (#): nazwa pakietu "${topic}"
+- H2 (##): kategoria pytania, pojedyncze słowo
+- H3 (###): treść pytania
+- Opcje: lista zadań (- [x] poprawna, - [ ] błędna)
+- Opcjonalnie: wyjaśnienie > Wyjaśnienie: ...
+Jeśli dodajesz wyjaśnienie, opisz nie tylko, dlaczego poprawna odpowiedź jest poprawna, ale też dlaczego każda z błędnych opcji jest niepoprawna.`;
+            const rules = isEn
+                ? `Pitfalls to avoid: the question contains the answer, the question suggests the answer, ambiguous or merely "less correct" incorrect options — each wrong option must be clearly false.`
+                : `Unikaj: pytanie zawiera odpowiedź, pytanie sugeruje odpowiedź, niejednoznaczne lub tylko "mniej poprawne" odpowiedzi błędne — każda błędna opcja musi być wyraźnie fałszywa.`;
+            const wiki = isEn
+                ? `Facts to base questions on (verify against them; do not invent facts beyond this context):\n${context}`
+                : `Fakty, na których masz oprzeć pytania (zweryfikuj je względem tego kontekstu; nie zmyślaj faktów spoza niego):\n${context}`;
+            const out = isEn
+                ? `Return ONLY raw markdown (no code fence, no extra text, no numbering).`
+                : `Zwróć TYLKO czysty markdown (bez bloku kodu, bez dodatkowego tekstu, bez numeracji).`;
+            return [head, format, rules, context ? wiki : '', recall, out].filter(Boolean).join('\n\n');
+        },
+
+        callGemini(prompt) {
+            return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent`, {
+                method: 'POST',
+                headers: {
+                    'x-goog-api-key': this.geminiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7 }
+                })
+            }).then(async (res) => {
+                const data = await res.json().catch(() => null);
+                const apiMsg = data?.error?.message;
+                if (res.status === 429) throw new Error(t('aiRateLimit') + (apiMsg ? ' ' + apiMsg : ''));
+                if (res.status === 403) throw new Error(apiMsg || t('aiForbidden'));
+                if (!res.ok) throw new Error(apiMsg || 'HTTP ' + res.status);
+                const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+                if (!text) throw new Error(t('aiEmptyResult'));
+                return text;
+            });
         },
 
     };

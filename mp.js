@@ -40,8 +40,22 @@ function mpMixin() {
             this.connectServer();
         },
 
+_mpSanitizeQuestion(q) {
+            const purify = (s) => (typeof DOMPurify !== 'undefined' && typeof s === 'string') ? DOMPurify.sanitize(s) : s;
+            return {
+                ...q,
+                question: purify(q.question),
+                options: Array.isArray(q.options) ? q.options.map(purify) : q.options,
+                explanation: q.explanation ? purify(q.explanation) : undefined,
+            };
+        },
+
+        mpRandomSuffix(label) {
+            return label + '-' + Math.floor(1000 + Math.random() * 9000);
+        },
+
         mpRandomNickname() {
-            const name = t('mpRandomPrefix') + '-' + Math.floor(1000 + Math.random() * 9000);
+            const name = this.mpRandomSuffix(t('mpRandomPrefix'));
             localStorage.setItem('quiz_mp_nickname', name);
             return name;
         },
@@ -55,8 +69,8 @@ function mpMixin() {
             if (this.mpNickname) localStorage.setItem('quiz_mp_nickname', this.mpNickname);
         },
 
-        mpRandomRoomName() {
-            return t('room') + '-' + Math.floor(1000 + Math.random() * 9000);
+mpRandomRoomName() {
+            return this.mpRandomSuffix(t('room'));
         },
 
         connectServer() {
@@ -92,7 +106,7 @@ function mpMixin() {
                 this.mpScreen = 'game';
             });
             this.mpSocket.on('question', (d) => {
-                this.mpCurrentQuestion = d.q;
+                this.mpCurrentQuestion = this._mpSanitizeQuestion(d.q);
                 this.mpIndex = d.index;
                 this.mpTotal = d.total;
                 this.mpAnswered = false;
@@ -113,7 +127,7 @@ function mpMixin() {
             });
             this.mpSocket.on('game-end', ({ results, review }) => {
                 this.mpResults = results;
-                this.mpReview = review || [];
+                this.mpReview = (review || []).map(r => this._mpSanitizeQuestion(r));
                 this.mpScreen = 'results';
                 clearInterval(this.mpCountdownTimer);
             });

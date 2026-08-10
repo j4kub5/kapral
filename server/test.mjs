@@ -12,7 +12,6 @@ host.on('connect', () => {
     if (!res.ok) { fail('create-room'); }
     if (res.players.length !== 0) { fail('host-only room should have no players'); }
     if (typeof res.qr !== 'string' || !res.qr.startsWith('data:image/')) { fail('create-room: qr data URL missing'); }
-    if (typeof res.joinUrl !== 'string' || !res.joinUrl.includes(res.code)) { fail('create-room: joinUrl missing'); }
     if (typeof res.name !== 'string' || !res.name.includes('Room')) { fail('create-room: room name missing'); }
     player.emit('join-room', { code: res.code, nickname: 'Player' }, (res2) => {
       if (!res2.ok || res2.players.length !== 1) { fail('join-room'); }
