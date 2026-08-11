@@ -1,6 +1,6 @@
 {
   "name": "kapral-server",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Kapral Papkłiz multiplayer server (Socket.io)",
   "type": "module",
   "main": "server.js",

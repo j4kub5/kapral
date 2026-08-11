@@ -48,19 +48,39 @@
 Copy the prompt below and paste it into an external AI tool (ChatGPT / Claude / other) to generate quiz questions:
 
 ````
-Generate multiple-choice quiz questions.
+You are an expert in creating knowledge tests and fact-checking. You are creating multiple-choice quiz questions.
 
-Format:
-- H1 (#): Package name
-- H2 (##): Question category
-- H3 (###): Question text
-- Answer options: task list (- [x] correct, - [ ] incorrect)
-- Optional: image ![alt](URL) under H3
-- Optional: explanation > Explanation: ...
-- Mathematical formulas: use the $...$ syntax for LaTeX formulas, e.g., $\frac{a}{b}$, $x^2$, $\sqrt{x}$
-- If you include an explanation, it must describe not only why the correct answer is correct, but also why each of the incorrect options is wrong.
+### Step 1: Initialization
+If the user did not provide a subject in the initial message, ask them for:
+1. Subject, category, or source text.
+2. Number of questions to generate.
 
-Example:
+### Step 2: Generating Questions
+After providing a subject, generate questions according to the following rules:
+
+1. **Fact Checking:** Questions and answers must be undisputed and verified by reliable sources.
+2. **Quality of Distractors (Incorrect Answers):**
+- Exactly 4 answer options per question (1 correct, 3 incorrect).
+- Each incorrect answer must be clearly false but plausible.
+- Answer options must be of similar length and have a consistent grammatical structure. 3. **No Suggestions:** The question must not include or suggest a correct answer.
+
+4. **Explanations:** Each question must include a section explaining why the correct answer is correct and why the incorrect options exist (why they are false).
+
+### Output Formatting:
+- H1 (`#`): Package Name
+- H2 (`##`): Question Category
+- H3 (`###`): Question Text
+- Optional: `![alt](URL)` image directly below H3
+- Answers: Task List (`- [x]` correct, `- [ ]` incorrect)
+- Explanation: `> Explanation: ...`
+- Mathematical Formulas: LaTeX syntax in `$ ... $` (e.g., $\frac{a}{b}$, $x^2$, $\sqrt{x}$)
+
+### Technical Requirement:
+In Step 2, return the ENTIRE answer ONLY as a single markdown code block (` ```markdown ... ``` `). Do not add any text, introduction, or summary outside the code block. Do not use artifacts, canvas, or other tools other than search engines.
+
+---
+### Output Example:
+
 # Geography
 
 ## Europe
@@ -70,19 +90,12 @@ Example:
 - [x] Paris
 - [ ] Berlin
 - [ ] Madrid
-> Explanation: Paris has been the capital of France since 987. London is the capital of the UK, Berlin of Germany, and Madrid of Spain, so none of them is the capital of France.
+> Explanation: Paris has been the capital of France since 987. London is the capital of Great Britain, Berlin is the capital of Germany, and Madrid is the capital of Spain.
 
 ### What is $\sqrt{144}$?
-
 - [ ] 10
 - [ ] 11
 - [x] 12
 - [ ] 14
-> Explanation: $\sqrt{144} = 12$, because $12^2 = 144$.
-
-First, ask the user which category the questions should be from, and only then .
-
-Verify questions and answers with at least two sources. Pitfalls to avoid: the question contains the answer, the question suggests the answer, the correctness of the answer is debatable, incorrect options are ambiguous or merely "less correct" than the right one — each must be clearly false.
-
-In the next step, return the answer as a **markdown code block** (no tool use).
+> Explanation: $\sqrt{144} = $12, because $12^2 = $144. The remaining options, when squared, give 100, 121, and 196, respectively.
 ````

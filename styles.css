@@ -273,6 +273,41 @@ body {
     gap: 1rem;
 }
 
+/* ===== Logo ===== */
+
+.logo-img {
+    height: 6rem;
+    width: auto;
+    border-radius: var(--pico-border-radius);
+}
+
+/* ===== Action tiles ===== */
+
+.tile-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.action-tile {
+    min-height: 120px;
+}
+
+/* ===== Pack search ===== */
+
+.pack-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 180px;
+    max-width: 360px;
+}
+
+.pack-search input {
+    padding: 0.35rem 0.75rem;
+}
+
 /* ===== Pack card ===== */
 
 .pack-card {
@@ -569,9 +604,73 @@ body {
 
 /* ===== Responsive ===== */
 
+main {
+    display: flex;
+    flex-direction: column;
+    min-height: 60vh;
+}
+
+main > *:last-child {
+    margin-top: auto;
+}
+
 @media (max-width: 576px) {
     .hide-on-mobile {
         display: none;
+    }
+
+    /* Compact header: logo + title on one line, nav wraps below */
+    .header-nav {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+    }
+
+    .header-nav > div:first-child {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .logo-img {
+        height: 3rem;
+    }
+
+    .header-nav nav ul {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    /* Compact action tiles */
+    .action-tile {
+        min-height: 76px;
+        padding: 0.75rem !important;
+    }
+
+    .tile-icon {
+        font-size: 1.15rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .action-tile span {
+        font-size: 0.85rem;
+    }
+
+    /* Two-column grid on mobile */
+    .grid-batches {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    /* Compact pack cards */
+    .pack-card {
+        padding: 0.85rem !important;
+    }
+
+    .pack-card h4 {
+        font-size: 1rem !important;
     }
 
     /* Truncate long category lists in pack cards */
@@ -583,9 +682,14 @@ body {
     }
 
     /* Start panel — stack vertically on mobile */
+    .start-panel-inner {
+        gap: 0.5rem;
+    }
+
     .start-panel-inner > div:last-child {
         flex-direction: column;
         width: 100%;
+        gap: 0.5rem;
     }
 
     .timer-group {
@@ -595,6 +699,20 @@ body {
 
     .start-panel-inner > div:last-child button.btn-auto {
         width: 100%;
+    }
+
+    /* Compact quiz view */
+    .quiz-article {
+        padding: 1rem !important;
+    }
+
+    .option-button {
+        padding: 0.6rem 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .quiz-article h3 {
+        font-size: 1.15rem !important;
     }
 
     /* Hide intro description on mobile */

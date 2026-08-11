@@ -32,10 +32,10 @@
         <!-- HEADER / NAVIGATION -->
         <div class="header-nav">
             <div style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;" @click="showDashboard()">
-                <img src="logo.png" alt="Kapral Papkłiz" style="height: 6rem; width: auto; border-radius: var(--pico-border-radius);">
+                <img src="logo.png" alt="Kapral Papkłiz" class="logo-img">
                 <div>
                     <h2 style="margin: 0; font-size: 1.25rem; line-height: 1;">Kapral <span style="color: var(--pico-primary);">Papkłiz</span></h2>
-                    <small style="color: var(--pico-muted-color);" x-text="t('subtitle')"></small>
+                    <small class="hide-on-mobile" style="color: var(--pico-muted-color);" x-text="t('subtitle')"></small>
                 </div>
             </div>
             <nav style="margin: 0;">
@@ -55,6 +55,8 @@
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('slate')"><span class="palette-dot" style="background:#78909c;"></span><span x-text="t('paletteSlate')"></span></a></li>
                                 <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsLang')"></small></li>
                                 <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleLang()"><span x-text="currentLang === 'pl' ? '🇬🇧' : '🇵🇱'"></span> <span x-text="currentLang === 'pl' ? 'English' : 'Polski'"></span></a></li>
+                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsSound')"></small></li>
+                                <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleSound()"><i class="fa-solid" :class="soundFeedback ? 'fa-volume-high' : 'fa-volume-xmark'"></i> <span x-text="soundFeedback ? t('soundOn') : t('soundOff')"></span></a></li>
                                 <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('aiKeyLabel')"></small></li>
                                 <li style="padding: 0.25rem 0.75rem;">
                                     <input x-model="geminiKey" type="password" style="margin:0;" :placeholder="t('aiKeyPlaceholder')" @keydown.enter.prevent="$el.closest('details').open = false; setGeminiKey(geminiKey)">
@@ -134,7 +136,7 @@
                             </select>
                         </label>
                         <label>
-                            <input type="checkbox" x-model="filterOutAnswered" role="switch">
+                            <input type="checkbox" x-model="filterOutAnswered" role="switch" @change="setFilterAnswered()">
                             <i class="fa-solid fa-eye-slash" :title="t('skipAnswered')"></i>
                         </label>
                         <div class="timer-group">
@@ -177,20 +179,6 @@
                     <p style="color: var(--pico-muted-color); max-width: 600px; margin: 0 auto;" x-text="t('dashboardHint')"></p>
             </section>
 
-            <!-- Search & Filter -->
-            <article>
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 200px;">
-                        <input type="search" x-model="packSearch" :placeholder="t('searchPlaceholder')" style="margin: 0; flex: 1;">
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button class="outline secondary btn-sm" @click="loadBuiltinPacks()">
-                            <i class="fa-solid fa-rotate"></i> <span class="hide-on-mobile" x-text="t('reload')"></span>
-                        </button>
-                    </div>
-                </div>
-            </article>
-
             <!-- Loading indicator -->
             <template x-if="loading">
                 <article aria-busy="true" x-text="t('loading')"></article>
@@ -200,34 +188,34 @@
             <div style="margin-bottom: 1.5rem;">
                 <div class="grid-batches">
                     <!-- Upload card -->
-                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;">
+                    <article class="action-tile" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; border-style: dashed; cursor: pointer;">
                         <label style="margin: 0; cursor: pointer; text-align: center; color: var(--pico-muted-color);">
-                            <i class="fa-solid fa-plus" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <i class="fa-solid fa-plus tile-icon"></i>
                             <span x-text="t('uploadLabel')"></span>
                             <input type="file" @change="handleFileUpload($event)" accept=".md" style="display: none;">
                         </label>
                     </article>
 
                     <!-- Paste markdown card -->
-                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="pasteMarkdown()">
+                    <article class="action-tile" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; border-style: dashed; cursor: pointer;" @click="pasteMarkdown()">
                         <div style="text-align: center; color: var(--pico-muted-color);">
-                            <i class="fa-solid fa-clipboard" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <i class="fa-solid fa-clipboard tile-icon"></i>
                             <span x-text="t('pasteMarkdown')"></span>
                         </div>
                     </article>
 
                     <!-- AI generation card -->
-                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="openAIGenerate()">
+                    <article class="action-tile" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; border-style: dashed; cursor: pointer;" @click="openAIGenerate()">
                         <div style="text-align: center; color: var(--pico-muted-color);">
-                            <i class="fa-solid fa-wand-magic-sparkles" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <i class="fa-solid fa-wand-magic-sparkles tile-icon"></i>
                             <span x-text="t('aiGenerate')"></span>
                         </div>
                     </article>
 
                     <!-- Infinite AI Quiz card -->
-                    <article style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 120px; border-style: dashed; cursor: pointer;" @click="openInfiniteAIModal()">
+                    <article class="action-tile" style="padding: 1.25rem; margin: 0; display: flex; align-items: center; justify-content: center; border-style: dashed; cursor: pointer;" @click="openInfiniteAIModal()">
                         <div style="text-align: center; color: var(--pico-muted-color);">
-                            <i class="fa-solid fa-infinity" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
+                            <i class="fa-solid fa-infinity tile-icon"></i>
                             <span x-text="t('aiInfiniteTitle')"></span>
 </div>
                     </article>
@@ -236,7 +224,16 @@
 
             <!-- User Packs -->
             <div>
-                <h4 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-user"></i> <span x-text="t('myPacks')"></span></h4>
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <h4 style="margin: 0;"><i class="fa-solid fa-user"></i> <span x-text="t('myPacks')"></span></h4>
+                    <div class="pack-search">
+                        <i class="fa-solid fa-magnifying-glass" style="color: var(--pico-muted-color);"></i>
+                        <input type="search" x-model="packSearch" :placeholder="t('searchPlaceholder')" style="margin: 0; flex: 1;">
+                    </div>
+                    <button class="outline secondary btn-sm" @click="loadBuiltinPacks()" :title="t('reload')">
+                        <i class="fa-solid fa-rotate"></i> <span class="hide-on-mobile" x-text="t('reload')"></span>
+                    </button>
+                </div>
                 <div class="grid-batches">
                     <template x-for="pack in allPacksFiltered.filter(p => p.source === 'user')" :key="'u-' + pack.name">
                         <article class="pack-card" :class="pack.selected ? 'selected' : ''" style="padding: 1.25rem; margin: 0; position: relative;" @click="togglePack(pack)">
@@ -320,7 +317,18 @@
                 <small :style="timeLeft <= 5 ? 'color: #ef4444; font-weight: bold;' : 'color: var(--pico-muted-color);'" x-text="timeLeft + t('seconds')"></small>
             </div>
 
-            <article style="padding: 1.5rem;" x-effect="currentPointer; $nextTick().then(() => MathJax.typesetPromise?.())">
+            <div class="quiz-topnav" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin: 0.75rem 0;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="outline secondary btn-sm btn-auto" x-show="currentPointer > 0" @click="previousQuestion()">
+                        <i class="fa-solid fa-chevron-left"></i> <span x-text="t('prev')"></span>
+                    </button>
+                </div>
+                <button class="btn-sm btn-auto" :disabled="!answeredCurrent" @click="nextQuestion()">
+                    <span x-text="t('next')"></span> <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <article class="quiz-article" style="padding: 1.5rem;" x-effect="currentPointer; $nextTick().then(() => MathJax.typesetPromise?.())">
                 <h3 style="margin-bottom: 1rem; font-size: 1.35rem;" x-html="currentQuestion?.question"></h3>
 
                 <template x-if="currentQuestion?.imageUrl">
@@ -586,7 +594,7 @@
                     <small :style="mpTimeLeft <= 5 ? 'color: #ef4444; font-weight: bold;' : 'color: var(--pico-muted-color);'" x-text="mpTimeLeft + t('seconds')"></small>
                 </div>
 
-                <article style="padding: 1.5rem;">
+                <article class="quiz-article" style="padding: 1.5rem;">
                     <h3 style="margin-bottom: 1rem; font-size: 1.35rem;" x-html="mpCurrentQuestion?.question"></h3>
 
                     <template x-if="mpCurrentQuestion?.imageUrl">

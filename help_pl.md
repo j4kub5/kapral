@@ -48,19 +48,39 @@
 Skopiuj poniższy prompt i wklej do zewnętrznego narzędzia AI (ChatGPT / Claude / inne), aby wygenerować pytania:
 
 ```
-Wygeneruj pytania quizowe jednokrotnego wyboru.
+Jesteś ekspertem ds. tworzenia testów wiedzy i weryfikacji faktów. Tworzysz pytania quizowe jednokrotnego wyboru.
 
-Format:
-- H1 (#): Nazwa pakietu
-- H2 (##): Kategoria pytań
-- H3 (###): Treść pytania
-- Opcje odpowiedzi: lista zadań (- [x] poprawna, - [ ] błędna)
-- Opcjonalnie: obrazek ![alt](URL) pod H3
-- Opcjonalnie: wyjaśnienie > Wyjaśnienie: ...
-- Wzory matematyczne: używaj składni $...$ dla wzorów LaTeX, np. $\frac{a}{b}$, $x^2$, $\sqrt{x}$
-- Wyjaśnienie (jeśli dodajesz) musi opisywać nie tylko, dlaczego poprawna odpowiedź jest poprawna, ale też po co istnieje każda z odpowiedzi błędnych (dlaczego są niepoprawne
+### Krok 1: Inicjalizacja
+Jeśli użytkownik nie podał tematu w pierwszej wiadomości, zapytaj go o:
+1. Temat, kategorię lub wklejenie tekstu źródłowego.
+2. Liczbę pytań do wygenerowania.
 
-Przykład:
+### Krok 2: Generowanie pytań
+Po podaniu tematu wygeneruj pytania według poniższych zasad:
+
+1. **Weryfikacja faktów:** Pytania i odpowiedzi muszą być bezsporne i zweryfikowane w rzetelnych źródłach.
+2. **Jakość dystraktorów (błędnych odpowiedzi):**
+   - Dokładnie 4 opcje odpowiedzi na pytanie (1 poprawna, 3 błędne).
+   - Każda błędna odpowiedź musi być jednoznacznie fałszywa, ale wiarygodna.
+   - Opcje odpowiedzi muszą mieć zbliżoną długość i spójną strukturę gramatyczną.
+3. **Brak sugestii:** Pytanie nie może zawierać ani sugerować poprawnej odpowiedzi.
+4. **Wyjaśnienia:** Każde pytanie musi zawierać sekcję wyjaśniającą, dlaczego poprawna odpowiedź jest właściwa i po co istnieją opcje błędne (dlaczego są fałszywe).
+
+### Formatowanie wyjścia:
+- H1 (`#`): Nazwa pakietu
+- H2 (`##`): Kategoria pytań
+- H3 (`###`): Treść pytania
+- Opcjonalnie: obrazek `![alt](URL)` bezpośrednio pod H3
+- Odpowiedzi: lista zadań (`- [x]` poprawna, `- [ ]` błędna)
+- Wyjaśnienie: `> Wyjaśnienie: ...`
+- Wzory matematyczne: składnia LaTeX w `$ ... $` (np. $\frac{a}{b}$, $x^2$, $\sqrt{x}$)
+
+### Wymóg techniczny:
+W Kroku 2 zwróć CAŁOŚĆ odpowiedzi WYŁĄCZNIE jako jeden blok kodu markdown (` ```markdown ... ``` `). Nie dodawaj żadnego tekstu, wstępu ani podsumowania poza blokiem kodu. Nie używaj artefaktów, canvas ani innych narzędzi poza wyszukiwarką.
+
+---
+### Przykład wyjścia:
+
 # Geografia
 
 ## Europa
@@ -70,18 +90,12 @@ Przykład:
 - [x] Paryż
 - [ ] Berlin
 - [ ] Madryt
-> Wyjaśnienie: Paryż jest stolicą Francji od 987 roku. Londyn to stolica Wielkiej Brytanii, Berlin — Niemiec, a Madryt — Hiszpanii, więc żadne z nich nie jest stolicą Francji.
+> Wyjaśnienie: Paryż jest stolicą Francji od 987 roku. Londyn to stolica Wielkiej Brytanii, Berlin — Niemiec, a Madryt — Hiszpanii.
 
 ### Ile wynosi $\sqrt{144}$?
 - [ ] 10
 - [ ] 11
 - [x] 12
 - [ ] 14
-> Wyjaśnienie: $\sqrt{144} = 12$, ponieważ $12^2 = 144$.
-
-Najpierw zapytaj użytkownika o to z jakiej kategorii mają być pytania.
-
-Pytania i odpowiedzi weryfikuj przynajmniej w dwóch źródłach. Pułapki, których masz unikać: pytanie zawiera odpowiedź, pytanie sugeruje odpowiedź, prawidłowość odpowiedzi jest dyskusyjna, odpowiedzi błędne są niejednoznaczne lub tylko „mniej poprawne” niż właściwa — każda musi być wyraźnie fałszywa.
-
-W następnym kroku zwróć odpowiedź jako **blok kodu markdown** (no tool use).
+> Wyjaśnienie: $\sqrt{144} = 12$, ponieważ $12^2 = 144$. Pozostałe opcje po podniesieniu do kwadratu dają odpowiednio 100, 121 i 196.
 ```

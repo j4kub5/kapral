@@ -7,7 +7,7 @@ function quizApp() {
         batchScore: 0,
         answeredCurrent: false,
         selectedOptionIdx: null,
-        filterOutAnswered: false,
+        filterOutAnswered: localStorage.getItem('quiz_filterAnswered') !== '0',
         questionCount: 10,
         packSearch: '',
         isDark: true,
@@ -35,6 +35,8 @@ function quizApp() {
         totalTimeUsed: 0,
         answeredCount: 0,
         answers: [],
+        soundFeedback: localStorage.getItem('quiz_soundFeedback') !== '0',
+        _audioCtx: null,
         geminiKey: localStorage.getItem('quiz_gemini_key') || '',
         aiTopic: '',
         aiCount: 10,
@@ -149,6 +151,47 @@ function quizApp() {
             localStorage.setItem('quiz_timerDuration', this.timerDuration);
         },
 
+        toggleSound() {
+            this.soundFeedback = !this.soundFeedback;
+            localStorage.setItem('quiz_soundFeedback', this.soundFeedback ? '1' : '0');
+        },
+
+        _playFeedback(correct) {
+            if (!this.soundFeedback) return;
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                this._audioCtx = this._audioCtx || new AC();
+                const ctx = this._audioCtx;
+                if (ctx.state === 'suspended') ctx.resume();
+                const now = ctx.currentTime;
+                const tones = correct
+                    ? [
+                        { f: 660, t: 0, d: 0.25, type: 'sine', g: 0.15 },
+                        { f: 880, t: 0.12, d: 0.25, type: 'sine', g: 0.15 },
+                        { f: 990, t: 0.24, d: 0.3, type: 'sine', g: 0.15 }
+                    ]
+                    : [
+                        { f: 392, t: 0, d: 0.3, type: 'square', g: 0.06 },
+                        { f: 262, t: 0.15, d: 0.35, type: 'square', g: 0.06 }
+                    ];
+                tones.forEach(({ f, t, d, type, g }) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = f;
+                    const start = now + t;
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(g, start + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + d);
+                    osc.connect(gain).connect(ctx.destination);
+                    osc.start(start);
+                    osc.stop(start + d + 0.05);
+                });
+            } catch (e) {
+                // feedback sound is optional
+            }
+        },
+
         startTimer() {
             this.stopTimer();
             if (!this.timerEnabled) return;
@@ -174,6 +217,7 @@ function quizApp() {
 
         onTimeout() {
             this.stopTimer();
+            this._playFeedback(false);
             this.showToast(t('timeUp'));
             this.answeredCurrent = true;
             this.selectedOptionIdx = -1;
@@ -259,13 +303,10 @@ function quizApp() {
             this.packs.forEach(p => { p.selected = !allSelected; });
         },
 
-        async removeUserPack(pack) {
+        removeUserPack(pack) {
             if (pack.source !== 'user') return;
-            const ok = await this.askConfirm(t('removePackConfirm', { name: pack.name, count: pack.questions.length }), t('removePack'));
-            if (ok) {
-                this.packs.splice(this.packs.indexOf(pack), 1);
-                this.persistUserPacks();
-            }
+            this.packs.splice(this.packs.indexOf(pack), 1);
+            this.persistUserPacks();
         },
 
         showDashboard() {
@@ -356,6 +397,7 @@ function quizApp() {
 
             const q = this.currentQuestion;
             const isCorrect = (optIdx === q.answer);
+            this._playFeedback(isCorrect);
 
             if (isCorrect) this.batchScore++;
             if (this.timerEnabled) {
@@ -467,6 +509,10 @@ function quizApp() {
                     if (text && text.trim()) this.addPackFromText(text);
                 }
             };
+        },
+
+        setFilterAnswered() {
+            localStorage.setItem('quiz_filterAnswered', this.filterOutAnswered ? '1' : '0');
         },
 
         async loadBuiltinPacks() {

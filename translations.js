@@ -1,5 +1,5 @@
 // translations.js — i18n dictionary for PL/EN
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.4.1';
 let currentLang = localStorage.getItem('quiz_lang') || 'pl';
 
 const TRANSLATIONS = {
@@ -16,6 +16,9 @@ const TRANSLATIONS = {
         settingsTheme: 'Motyw',
         settingsPalette: 'Paleta',
         settingsLang: 'Język',
+        settingsSound: 'Dźwięk odpowiedzi',
+        soundOn: 'Włączony',
+        soundOff: 'Wyłączony',
         guest: 'Gość',
         room: 'Pokój',
         usernamePlaceholder: 'Nazwa użytkownika',
@@ -75,11 +78,8 @@ const TRANSLATIONS = {
         aiInfiniteDesc: 'AI generuje pytania w trakcie gry',
         aiInfiniteStart: 'Rozpocznij',
         aiInfiniteTopicLabel: 'Temat quizu',
-        aiInfiniteGenerating: 'Generowanie pytań...',
         aiInfiniteMore: 'Generowanie kolejnych pytań...',
-        aiInfiniteSuggestions: 'Sugerowane kategorie',
         aiInfiniteCustomCategory: 'Własna kategoria...',
-        aiInfiniteCategoryBadge: 'Kategoria: {category}',
         aiInfiniteChangeCategory: 'Zmień kategorię',
         aiInfiniteApply: 'Zastosuj',
         aiInfiniteNoSuggestions: 'Brak sugestii — wpisz własną kategorię.',
@@ -168,7 +168,6 @@ const TRANSLATIONS = {
         cancel: 'Anuluj',
         // Toasts
         usernameTooLong: 'Nazwa użytkownika nie może być dłuższa niż 20 znaków.',
-        removePackConfirm: 'Usunąć pakiet "{name}" ({count} pytań)?',
         selectAtLeastOne: 'Wybierz przynajmniej jeden pakiet!',
         noAvailableQuestions: 'Brak dostępnych pytań w wybranych pakietach!',
         noQuestionsInPack: 'Brak dostępnych pytań w tym pakiecie!',
@@ -219,6 +218,9 @@ const TRANSLATIONS = {
         settingsTheme: 'Theme',
         settingsPalette: 'Palette',
         settingsLang: 'Language',
+        settingsSound: 'Answer sound',
+        soundOn: 'On',
+        soundOff: 'Off',
         guest: 'Guest',
         room: 'Room',
         usernamePlaceholder: 'Username',
@@ -278,11 +280,8 @@ const TRANSLATIONS = {
         aiInfiniteDesc: 'AI generates questions during gameplay',
         aiInfiniteStart: 'Start',
         aiInfiniteTopicLabel: 'Quiz topic',
-        aiInfiniteGenerating: 'Generating questions...',
         aiInfiniteMore: 'Generating more questions...',
-        aiInfiniteSuggestions: 'Suggested categories',
         aiInfiniteCustomCategory: 'Custom category...',
-        aiInfiniteCategoryBadge: 'Category: {category}',
         aiInfiniteChangeCategory: 'Change category',
         aiInfiniteApply: 'Apply',
         aiInfiniteNoSuggestions: 'No suggestions — type your own category.',
@@ -371,7 +370,6 @@ const TRANSLATIONS = {
         cancel: 'Cancel',
         // Toasts
         usernameTooLong: 'Username cannot be longer than 20 characters.',
-        removePackConfirm: 'Remove pack "{name}" ({count} questions)?',
         selectAtLeastOne: 'Select at least one pack!',
         noAvailableQuestions: 'No available questions in selected packs!',
         noQuestionsInPack: 'No available questions in this pack!',

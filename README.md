@@ -65,6 +65,13 @@ The multiplayer server can be hosted publicly on [Render.com](https://render.com
 
 ## Changelog
 
+### v0.4.1
+- Answer feedback sound (correct/wrong) in single-player.
+- Compact mobile UI: 2-column pack grid, smaller header, inline search bar.
+- "Skip answered" toggle defaults to ON and persists in localStorage.
+- Duplicate quiz navigation (prev/next) above the question — scroll only for explanations.
+- New question packs: Fizyka i chemia, Biologia.
+
 ### v0.4.0
 - AI question generation with the Gemini API — generate quiz packs from a topic (free key set in settings, results land as an `AI:` pack).
 - **Infinite AI Quiz** — AI generates questions in the background while you play; category steering with AI-suggested chips + custom input.
