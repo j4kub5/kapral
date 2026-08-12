@@ -41,13 +41,7 @@ function mpMixin() {
         },
 
 _mpSanitizeQuestion(q) {
-            const purify = (s) => (typeof DOMPurify !== 'undefined' && typeof s === 'string') ? DOMPurify.sanitize(s) : s;
-            return {
-                ...q,
-                question: purify(q.question),
-                options: Array.isArray(q.options) ? q.options.map(purify) : q.options,
-                explanation: q.explanation ? purify(q.explanation) : undefined,
-            };
+            return sanitizeQuestion(q);
         },
 
         mpRandomSuffix(label) {

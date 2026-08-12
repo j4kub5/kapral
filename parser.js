@@ -44,9 +44,6 @@ function parseMarkdownWithMarked(mdText) {
     const tokens = marked.lexer(mdText);
     const questions = [];
 
-    const hasH3 = tokens.some(t => t.type === 'heading' && t.depth === 3);
-    const hasH2 = tokens.some(t => t.type === 'heading' && t.depth === 2);
-
     let currentPackName = 'Pakiet Własny';
     let currentCategory = 'Ogólne';
     let currentQ = null;
@@ -54,31 +51,11 @@ function parseMarkdownWithMarked(mdText) {
     tokens.forEach(token => {
         if (token.type === 'heading') {
             // 3-level hierarchy (H1=Pack, H2=Category, H3=Question)
-            if (hasH3) {
-                if (token.depth === 1) {
-                    currentPackName = token.text.trim();
-                } else if (token.depth === 2) {
-                    currentCategory = token.text.trim();
-                } else if (token.depth === 3) {
-                    if (currentQ && currentQ.question && currentQ.options.length > 0) {
-                        questions.push(currentQ);
-                    }
-                    currentQ = createQuestionObj(currentPackName, currentCategory, token.text.trim());
-                }
-            }
-            // 2-level hierarchy (H1=Category, H2=Question)
-            else if (hasH2) {
-                if (token.depth === 1) {
-                    currentCategory = token.text.trim();
-                } else if (token.depth === 2) {
-                    if (currentQ && currentQ.question && currentQ.options.length > 0) {
-                        questions.push(currentQ);
-                    }
-                    currentQ = createQuestionObj(currentPackName, currentCategory, token.text.trim());
-                }
-            }
-            // 1-level fallback (H1=Question)
-            else if (token.depth === 1) {
+            if (token.depth === 1) {
+                currentPackName = token.text.trim();
+            } else if (token.depth === 2) {
+                currentCategory = token.text.trim();
+            } else if (token.depth === 3) {
                 if (currentQ && currentQ.question && currentQ.options.length > 0) {
                     questions.push(currentQ);
                 }
@@ -131,5 +108,25 @@ function parseMarkdownWithMarked(mdText) {
     return questions;
 }
 
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function sanitizeQuestion(q) {
+    const purify = (s) => (typeof DOMPurify !== 'undefined' && typeof s === 'string') ? DOMPurify.sanitize(s) : s;
+    return {
+        ...q,
+        question: purify(q.question),
+        options: Array.isArray(q.options) ? q.options.map(purify) : q.options,
+        explanation: q.explanation ? purify(q.explanation) : undefined,
+    };
+}
+
 globalThis.parseMarkdownWithMarked = parseMarkdownWithMarked;
 globalThis.shuffleQuestionOptions = shuffleQuestionOptions;
+globalThis.shuffleArray = shuffleArray;
+globalThis.sanitizeQuestion = sanitizeQuestion;

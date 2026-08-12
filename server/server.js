@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import { Server } from 'socket.io';
 import QRCode from 'qrcode';
-import { parseMarkdown, shuffleQuestionOptions } from './parser.js';
+import { parseMarkdown, shuffleQuestionOptions, shuffleArray } from './parser.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -111,8 +111,7 @@ function endGame(room) {
     broadcastRoom(room, 'game-end', { results: playerList(room), review });
 }
 
-function sanitizeNick(n) { return String(n || '').trim().slice(0, 20); }
-function sanitizeName(n) { return String(n || '').trim().slice(0, 30); }
+function sanitize(s, max) { return String(s || '').trim().slice(0, max); }
 
 io.on('connection', (socket) => {
     socket.data.roomId = null;
@@ -122,9 +121,9 @@ io.on('connection', (socket) => {
         const room = {
             roomId,
             code: genCode(),
-            name: sanitizeName(roomName) || 'Room',
+            name: sanitize(roomName, 30) || 'Room',
             hostSocketId: socket.id,
-            hostNickname: sanitizeNick(nickname) || 'Host',
+            hostNickname: sanitize(nickname, 20) || 'Host',
             hostPlays: !!hostPlays,
             players: [],
             questions: [],
@@ -170,7 +169,7 @@ io.on('connection', (socket) => {
         if (room.players.length >= MAX_PLAYERS) return ack({ ok: false, error: 'room-full' });
         if (room.started) return ack({ ok: false, error: 'game-in-progress' });
 
-        const player = { id: socket.id, nickname: sanitizeNick(nickname) || 'Player', score: 0, isHost: false, answered: false, answers: [] };
+        const player = { id: socket.id, nickname: sanitize(nickname, 20) || 'Player', score: 0, isHost: false, answered: false, answers: [] };
         room.players.push(player);
         socket.join(room.roomId);
         socket.data.roomId = room.roomId;
@@ -199,11 +198,7 @@ io.on('connection', (socket) => {
         if (room.players.length === 0) return ack({ ok: false, error: 'no-players' });
 
         const n = Math.min(questionCount || room.questions.length, room.questions.length);
-        const shuffled = [...room.questions];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
+        const shuffled = shuffleArray([...room.questions]);
         room.questions = shuffled.slice(0, n);
         room.timePerQuestion = Math.min(Math.max(parseInt(timePerQuestion, 10) || 15, 5), 120);
         room.started = true;

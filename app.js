@@ -100,13 +100,7 @@ function quizApp() {
                 const stored = JSON.parse(localStorage.getItem('quiz_user_packs') || '[]');
                 stored.forEach(p => {
                     if (p.name && Array.isArray(p.questions)) {
-                        const purify = (s) => (typeof DOMPurify !== 'undefined' && typeof s === 'string') ? DOMPurify.sanitize(s) : s;
-                        p.questions = p.questions.map(q => ({
-                            ...q,
-                            question: purify(q.question),
-                            options: Array.isArray(q.options) ? q.options.map(purify) : q.options,
-                            explanation: q.explanation ? purify(q.explanation) : undefined,
-                        }));
+                        p.questions = p.questions.map(sanitizeQuestion);
                         this.packs.push({ name: p.name, source: 'user', questions: p.questions, selected: false });
                     }
                 });
@@ -224,16 +218,20 @@ function quizApp() {
             this.timeoutCount++;
             const q = this.currentQuestion;
             this.answers[this.currentPointer] = { selected: -1, correct: false };
-            this.history[q.id] = {
-                correct: false,
+            this.recordAnswer(q.id, false, true);
+            if (this.aiInfiniteActive) this.ensureInfiniteGeneration();
+            this.timeoutAdvanceTimer = setTimeout(() => this.nextQuestion(), 3000);
+        },
+
+        recordAnswer(qId, correct, timedOut) {
+            this.history[qId] = {
+                correct,
                 lastAnsweredAt: new Date().toISOString().split('T')[0],
-                timedOut: true
+                ...(timedOut ? { timedOut: true } : {})
             };
             localStorage.setItem('quiz_history', JSON.stringify(this.history));
             this.lastRank = this.rankName;
             localStorage.setItem('quiz_lastRank', this.lastRank);
-            if (this.aiInfiniteActive) this.ensureInfiniteGeneration();
-            this.timeoutAdvanceTimer = setTimeout(() => this.nextQuestion(), 3000);
         },
 
         showToast(message) {
@@ -329,11 +327,7 @@ function quizApp() {
                 this.showToast(t('noAvailableQuestions'));
                 return;
             }
-            // Fisher-Yates shuffle
-            for (let i = pool.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
+            pool = shuffleArray(pool);
             const count = this.questionCount === 0 ? pool.length : Math.min(this.questionCount, pool.length);
             this.activeQuestions = pool.slice(0, count).map(shuffleQuestionOptions);
             this.startQuiz();
@@ -361,8 +355,9 @@ function quizApp() {
         },
 
         get rankName() {
-            if (!this.activeQuestions.length) return getDefaultRank();
-            const pct = Math.round((this.batchScore / this.activeQuestions.length) * 100);
+            const total = this.quizAnsweredTotal || this.activeQuestions.length;
+            if (!total) return getDefaultRank();
+            const pct = Math.round((this.batchScore / total) * 100);
             const rank = this.ranks.find(r => pct >= r.min);
             return rank ? rank.name : getDefaultRank();
         },
@@ -405,14 +400,7 @@ function quizApp() {
                 this.answeredCount++;
             }
             this.answers[this.currentPointer] = { selected: optIdx, correct: isCorrect };
-
-            this.history[q.id] = {
-                correct: isCorrect,
-                lastAnsweredAt: new Date().toISOString().split('T')[0]
-            };
-            localStorage.setItem('quiz_history', JSON.stringify(this.history));
-            this.lastRank = this.rankName;
-            localStorage.setItem('quiz_lastRank', this.lastRank);
+            this.recordAnswer(q.id, isCorrect);
             if (this.aiInfiniteActive) this.ensureInfiniteGeneration();
         },
 
@@ -484,11 +472,7 @@ function quizApp() {
         pushUserPack(parsed, name) {
             // Sanitize all HTML fields before they hit the DOM (x-html): covers
             // uploads, pasted markdown and AI output alike (AGENTS §6.3).
-            for (const q of parsed) {
-                q.question = DOMPurify.sanitize(q.question);
-                q.explanation = DOMPurify.sanitize(q.explanation);
-                q.options = q.options.map(o => DOMPurify.sanitize(o));
-            }
+            parsed = parsed.map(sanitizeQuestion);
             const packName = parsed[0]?.packName || name || t('userBadge');
             this.packs.push({ name: packName, source: 'user', questions: parsed, selected: true });
             this.persistUserPacks();
@@ -513,6 +497,10 @@ function quizApp() {
 
         setFilterAnswered() {
             localStorage.setItem('quiz_filterAnswered', this.filterOutAnswered ? '1' : '0');
+        },
+
+        wikiHost(lang) {
+            return lang === 'en' ? 'en.wikipedia.org' : 'pl.wikipedia.org';
         },
 
         async loadBuiltinPacks() {
@@ -627,7 +615,11 @@ function quizApp() {
                     this.showToast(t('invalidSave'));
                     return;
                 }
-                if (!data.exportedAt || !data.history) {
+                if (!data.exportedAt || typeof data.history !== 'object' || data.history === null || Array.isArray(data.history)) {
+                    this.showToast(t('invalidSave'));
+                    return;
+                }
+                if (data.userPacks != null && !Array.isArray(data.userPacks)) {
                     this.showToast(t('invalidSave'));
                     return;
                 }
@@ -758,16 +750,17 @@ function quizApp() {
             this.aiError = '';
             try {
                 const lang = currentLang;
-                const wiki = lang === 'en' ? 'en.wikipedia.org' : 'pl.wikipedia.org';
+                const wiki = this.wikiHost(lang);
                 this.aiStep = 'wiki';
-                const context = this.aiUseWiki ? await this.fetchWikiContext(wiki, topic) : (this.aiStep = 'generating', '');
+                let context = '';
+                if (this.aiUseWiki) context = await this.fetchWikiContext(wiki, topic);
                 this.aiStep = 'generating';
                 const prompt = this.buildAIQuestionPrompt(lang, topic, this.aiCount, context);
                 const md = await this.callGemini(prompt);
                 this.aiStep = 'parsing';
                 const parsed = parseMarkdownWithMarked(md);
                 if (!parsed.length) throw new Error(t('aiEmptyResult'));
-                const valid = parsed.filter(q => q.answer >= 0);
+                const valid = parsed.filter(q => q.answer >= 0 && q.options?.length === 4);
                 if (!valid.length) throw new Error(t('aiEmptyResult'));
                 valid[0].packName = 'AI: ' + topic;
                 this.pushUserPack(valid);
@@ -809,6 +802,7 @@ function quizApp() {
                 this.packs = [tempPack, ...this.packs.filter(p => p.source !== 'ai_infinite')];
                 this.questionCount = 0;
                 this.filterOutAnswered = false;
+                this.setFilterAnswered();
                 this.startQuizFromPacks();
                 this.aiInfiniteModalVisible = false;
                 this.generateInfiniteSuggestions();
@@ -825,20 +819,21 @@ function quizApp() {
             this.aiInfiniteGenerating = true;
             try {
                 const lang = currentLang;
-                const wiki = lang === 'en' ? 'en.wikipedia.org' : 'pl.wikipedia.org';
+                const wiki = this.wikiHost(lang);
                 const topic = this.aiInfiniteSubtopic || this.aiInfiniteTopic;
                 const context = this.aiUseWiki ? await this.fetchWikiContext(wiki, topic) : '';
-                const recent = this.activeQuestions.slice(-3).map(q => q.question).join('\n- ');
+                const recent = this.activeQuestions.slice(-20).map(q => q.question).join('\n- ');
                 const count = this.activeQuestions.length === 0 ? 10 : 5;
                 const prompt = this.buildAIQuestionPrompt(lang, topic, count, context, recent);
                 const md = await this.callGemini(prompt);
                 const parsed = parseMarkdownWithMarked(md);
-                const valid = parsed.filter(q => q.answer >= 0);
+                const valid = parsed.filter(q => q.answer >= 0 && q.options?.length === 4);
                 if (!valid.length) throw new Error(t('aiEmptyResult'));
                 valid.forEach(q => { q.packName = 'AI: ' + this.aiInfiniteTopic; });
                 const shuffled = valid.map(shuffleQuestionOptions);
                 if (this.aiInfiniteActive && this.view === 'quiz') {
                     this.activeQuestions.push(...shuffled);
+                    if (this.currentPointer === this.activeQuestions.length - 2) this.nextQuestion();
                     return [];
                 }
                 return shuffled;
@@ -946,6 +941,23 @@ function quizApp() {
             const head = isEn
                 ? `Generate exactly ${count} multiple-choice quiz questions (single correct answer) about the topic: "${topic}".`
                 : `Wygeneruj dokładnie ${count} pytań quizowych jednokrotnego wyboru na temat: "${topic}".`;
+            const personaAndRules = isEn
+                ? `You are an expert in creating factual knowledge tests.
+
+Rules:
+- Exactly 4 answer options per question (1 correct, 3 incorrect).
+- Facts must be undisputed and verified against reliable sources (and the provided context, when given); do not invent facts.
+- Each incorrect option must be clearly false but plausible, with similar length and consistent grammatical structure as the others.
+- The question must not contain or suggest the correct answer.
+- Every question MUST include an explanation: why the correct answer is correct and why each incorrect option is false.`
+                : `Jesteś ekspertem w tworzeniu testów wiedzy opartych na faktach.
+
+Zasady:
+- Dokładnie 4 opcje odpowiedzi na pytanie (1 poprawna, 3 błędne).
+- Fakty muszą być bezsporne i zweryfikowane w rzetelnych źródłach (oraz w podanym kontekście, jeśli występuje); nie zmyślaj faktów.
+- Każda błędna opcja musi być jednoznacznie fałszywa, ale wiarygodna, o długości i strukturze gramatycznej zbliżonej do pozostałych.
+- Pytanie nie może zawierać ani sugerować poprawnej odpowiedzi.
+- Każde pytanie MUSI zawierać wyjaśnienie: dlaczego poprawna odpowiedź jest poprawna i dlaczego każda błędna opcja jest fałszywa.`;
             const recall = recent
                 ? (isEn
                     ? `Recently asked questions (do not repeat or closely paraphrase these):\n- ${recent}`
@@ -957,25 +969,20 @@ function quizApp() {
 - H2 (##): question category, single word
 - H3 (###): the question text
 - Options: task list (- [x] correct, - [ ] incorrect)
-- Optional: explanation > Explanation: ...
-If you include an explanation, describe not only why the correct answer is correct, but also why each wrong option is false.`
+- Explanation: > Explanation: ...`
                 : `Format:
 - H1 (#): nazwa pakietu "${topic}"
 - H2 (##): kategoria pytania, pojedyncze słowo
 - H3 (###): treść pytania
 - Opcje: lista zadań (- [x] poprawna, - [ ] błędna)
-- Opcjonalnie: wyjaśnienie > Wyjaśnienie: ...
-Jeśli dodajesz wyjaśnienie, opisz nie tylko, dlaczego poprawna odpowiedź jest poprawna, ale też dlaczego każda z błędnych opcji jest niepoprawna.`;
-            const rules = isEn
-                ? `Pitfalls to avoid: the question contains the answer, the question suggests the answer, ambiguous or merely "less correct" incorrect options — each wrong option must be clearly false.`
-                : `Unikaj: pytanie zawiera odpowiedź, pytanie sugeruje odpowiedź, niejednoznaczne lub tylko "mniej poprawne" odpowiedzi błędne — każda błędna opcja musi być wyraźnie fałszywa.`;
+- Wyjaśnienie: > Wyjaśnienie: ...`;
             const wiki = isEn
                 ? `Facts to base questions on (verify against them; do not invent facts beyond this context):\n${context}`
                 : `Fakty, na których masz oprzeć pytania (zweryfikuj je względem tego kontekstu; nie zmyślaj faktów spoza niego):\n${context}`;
             const out = isEn
                 ? `Return ONLY raw markdown (no code fence, no extra text, no numbering).`
                 : `Zwróć TYLKO czysty markdown (bez bloku kodu, bez dodatkowego tekstu, bez numeracji).`;
-            return [head, format, rules, context ? wiki : '', recall, out].filter(Boolean).join('\n\n');
+            return [head, personaAndRules, format, context ? wiki : '', recall, out].filter(Boolean).join('\n\n');
         },
 
         callGemini(prompt) {

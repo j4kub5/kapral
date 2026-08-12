@@ -65,6 +65,11 @@ The multiplayer server can be hosted publicly on [Render.com](https://render.com
 
 ## Changelog
 
+### v0.4.2
+- AI generation enforces exactly 4 options and required explanations; expert prompt (fact-checking, distractor quality).
+- Infinite quiz: wider anti-repeat recall, auto-advance fix.
+- Internal refactors: shared sanitizeQuestion/shuffleArray, rank/import hardening.
+
 ### v0.4.1
 - Answer feedback sound (correct/wrong) in single-player.
 - Compact mobile UI: 2-column pack grid, smaller header, inline search bar.
