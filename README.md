@@ -65,6 +65,10 @@ The multiplayer server can be hosted publicly on [Render.com](https://render.com
 
 ## Changelog
 
+### v0.4.3
+- Settings moved to a separate page (theme, palette, language, sound, Gemini API key).
+- New pack: Zaćmienie.
+
 ### v0.4.2
 - AI generation enforces exactly 4 options and required explanations; expert prompt (fact-checking, distractor quality).
 - Infinite quiz: wider anti-repeat recall, auto-advance fix.

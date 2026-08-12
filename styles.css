@@ -480,6 +480,26 @@ body {
     vertical-align: middle;
 }
 
+.palette-btn {
+    display: inline-flex;
+    align-items: center;
+    border: 1.5px solid var(--pico-border-color);
+    border-radius: var(--pico-border-radius);
+    background: transparent;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    color: var(--pico-color);
+}
+
+.palette-btn:hover {
+    border-color: var(--pico-primary-hover);
+}
+
+.palette-btn.active {
+    border-color: var(--pico-primary);
+    background-color: rgba(var(--pico-primary-background-rgb, 59, 130, 246), 0.08);
+}
+
 /* ===== Rank list ===== */
 
 .rank-list {

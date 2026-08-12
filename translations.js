@@ -1,5 +1,5 @@
 // translations.js — i18n dictionary for PL/EN
-const APP_VERSION = '0.4.2';
+const APP_VERSION = '0.4.3';
 let currentLang = localStorage.getItem('quiz_lang') || 'pl';
 
 const TRANSLATIONS = {

@@ -41,33 +41,9 @@
             <nav style="margin: 0;">
                 <ul>
                     <li>
-                        <details class="dropdown">
-                            <summary class="outline secondary btn-sm" role="button" :title="t('settings')">
-                                <i class="fa-solid fa-sliders"></i>
-                            </summary>
-                            <ul style="min-width: 13rem;">
-                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsTheme')"></small></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleTheme()"><i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i> <span x-text="isDark ? t('themeToggleDark') : t('themeToggleLight')"></span></a></li>
-                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsPalette')"></small></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('pink')"><span class="palette-dot" style="background:#f06292;"></span><span x-text="t('palettePink')"></span></a></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('cyan')"><span class="palette-dot" style="background:#4dd0e1;"></span><span x-text="t('paletteCyan')"></span></a></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('sand')"><span class="palette-dot" style="background:#a1887f;"></span><span x-text="t('paletteSand')"></span></a></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; setPalette('slate')"><span class="palette-dot" style="background:#78909c;"></span><span x-text="t('paletteSlate')"></span></a></li>
-                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsLang')"></small></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleLang()"><span x-text="currentLang === 'pl' ? '🇬🇧' : '🇵🇱'"></span> <span x-text="currentLang === 'pl' ? 'English' : 'Polski'"></span></a></li>
-                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('settingsSound')"></small></li>
-                                <li><a href="#" @click.prevent="$el.closest('details').open = false; toggleSound()"><i class="fa-solid" :class="soundFeedback ? 'fa-volume-high' : 'fa-volume-xmark'"></i> <span x-text="soundFeedback ? t('soundOn') : t('soundOff')"></span></a></li>
-                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('aiKeyLabel')"></small></li>
-                                <li style="padding: 0.25rem 0.75rem;">
-                                    <input x-model="geminiKey" type="password" style="margin:0;" :placeholder="t('aiKeyPlaceholder')" @keydown.enter.prevent="$el.closest('details').open = false; setGeminiKey(geminiKey)">
-                                </li>
-                                <li style="padding: 0.25rem 0.75rem; display:flex; gap:0.5rem;">
-                                    <button x-show="geminiKey" class="btn-sm" @click.prevent="$el.closest('details').open = false; setGeminiKey(geminiKey)" x-text="t('aiKeySave')"></button>
-                                    <button x-show="geminiKey" class="btn-sm outline" @click.prevent="$el.closest('details').open = false; setGeminiKey('')" x-text="t('aiKeyRemove')"></button>
-                                </li>
-                                <li style="padding: 0.25rem 0.75rem;"><small style="color: var(--pico-muted-color);" x-text="t('aiKeyHint')"></small></li>
-                            </ul>
-                        </details>
+                        <button class="outline secondary btn-sm" @click="view = 'settings'" :title="t('settings')">
+                            <i class="fa-solid fa-sliders"></i>
+                        </button>
                     </li>
                     <li>
                         <button x-show="!editingUsername" class="outline secondary btn-sm"
@@ -753,7 +729,49 @@
             </article>
         </main>
 
-        <!-- VIEW 5: HELP -->
+        <!-- VIEW 5: SETTINGS -->
+        <main x-show="view === 'settings'" x-transition>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 x-text="t('settings')"></h3>
+                <button class="outline secondary btn-auto" @click="showDashboard()">
+                    <i class="fa-solid fa-xmark"></i> <span x-text="t('close')"></span>
+                </button>
+            </div>
+            <article>
+                <h4 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-circle-half-stroke"></i> <span x-text="t('settingsTheme')"></span></h4>
+                <button class="outline btn-auto" @click="toggleTheme()">
+                    <i class="fa-solid" :class="isDark ? 'fa-sun' : 'fa-moon'"></i> <span x-text="isDark ? t('themeToggleDark') : t('themeToggleLight')"></span>
+                </button>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;"><i class="fa-solid fa-palette"></i> <span x-text="t('settingsPalette')"></span></h4>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="palette-btn" :class="palette === 'pink' ? 'active' : ''" @click="setPalette('pink')"><span class="palette-dot" style="background:#f06292;"></span><span x-text="t('palettePink')"></span></button>
+                    <button class="palette-btn" :class="palette === 'cyan' ? 'active' : ''" @click="setPalette('cyan')"><span class="palette-dot" style="background:#4dd0e1;"></span><span x-text="t('paletteCyan')"></span></button>
+                    <button class="palette-btn" :class="palette === 'sand' ? 'active' : ''" @click="setPalette('sand')"><span class="palette-dot" style="background:#a1887f;"></span><span x-text="t('paletteSand')"></span></button>
+                    <button class="palette-btn" :class="palette === 'slate' ? 'active' : ''" @click="setPalette('slate')"><span class="palette-dot" style="background:#78909c;"></span><span x-text="t('paletteSlate')"></span></button>
+                </div>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;"><i class="fa-solid fa-language"></i> <span x-text="t('settingsLang')"></span></h4>
+                <button class="outline btn-auto" @click="toggleLang()">
+                    <span x-text="currentLang === 'pl' ? '🇬🇧 English' : '🇵🇱 Polski'"></span>
+                </button>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;"><i class="fa-solid fa-volume-high"></i> <span x-text="t('settingsSound')"></span></h4>
+                <button class="outline btn-auto" @click="toggleSound()">
+                    <i class="fa-solid" :class="soundFeedback ? 'fa-volume-high' : 'fa-volume-xmark'"></i> <span x-text="soundFeedback ? t('soundOn') : t('soundOff')"></span>
+                </button>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;"><i class="fa-solid fa-key"></i> <span x-text="t('aiKeyLabel')"></span></h4>
+                <input x-model="geminiKey" type="password" :placeholder="t('aiKeyPlaceholder')" @keydown.enter.prevent="setGeminiKey(geminiKey)">
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                    <button x-show="geminiKey" class="btn-sm" @click="setGeminiKey(geminiKey)" x-text="t('aiKeySave')"></button>
+                    <button x-show="geminiKey" class="btn-sm outline" @click="setGeminiKey('')" x-text="t('aiKeyRemove')"></button>
+                </div>
+                <small style="display: block; margin-top: 0.5rem; color: var(--pico-muted-color);" x-text="t('aiKeyHint')"></small>
+            </article>
+        </main>
+
+        <!-- VIEW 6: HELP -->
         <main x-show="view === 'help'" x-transition>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 x-text="t('helpTitle')"></h3>
