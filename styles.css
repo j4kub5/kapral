@@ -488,7 +488,7 @@ body {
     background: transparent;
     padding: 0.4rem 0.8rem;
     cursor: pointer;
-    color: var(--pico-color);
+    color: var(--pico-foreground);
 }
 
 .palette-btn:hover {
@@ -498,6 +498,40 @@ body {
 .palette-btn.active {
     border-color: var(--pico-primary);
     background-color: rgba(var(--pico-primary-background-rgb, 59, 130, 246), 0.08);
+}
+
+.ai-conn-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    border: 1.5px solid var(--pico-border-color);
+    border-radius: var(--pico-border-radius);
+    background: transparent;
+}
+
+.ai-conn-row.active {
+    border-color: var(--pico-primary);
+    background-color: rgba(var(--pico-primary-background-rgb, 59, 130, 246), 0.08);
+}
+
+.ai-test-result {
+    margin-top: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--pico-border-radius);
+    font-size: 0.85rem;
+    word-break: break-word;
+    border: 1px solid var(--pico-border-color);
+}
+
+.ai-test-result.ok {
+    color: #10b981;
+    border-color: #10b981;
+}
+
+.ai-test-result.err {
+    color: #ef4444;
+    border-color: #ef4444;
 }
 
 /* ===== Rank list ===== */

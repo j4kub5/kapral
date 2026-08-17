@@ -10,14 +10,13 @@ function mpMixin() {
         mpCode: '',
         mpRoomName: '',
         mpQr: '',
+        mpJoinUrl: '',
         mpIsHost: false,
         mpHostPlays: false,
         mpPlayers: [],
         mpQuestionCount: 0,
         mpPackName: '',
         mpPackText: '',
-        mpUploadMode: 'file',
-        mpPasteText: '',
         mpStartCount: 10,
         mpTimePerQuestion: 15,
         mpCurrentQuestion: null,
@@ -30,6 +29,8 @@ function mpMixin() {
         mpResults: [],
         mpReview: [],
         mpCountdownTimer: null,
+        mpAutoHost: false,
+        mpPendingPack: '',
 
         initMp() {
             const room = new URLSearchParams(location.search).get('room');
@@ -76,6 +77,7 @@ mpRandomRoomName() {
                 this.mpScreen = 'menu';
                 this.ensureMpNickname();
                 this.showToast(t('mpConnected'));
+                if (this.mpAutoHost) this.createRoom();
             });
             this.mpSocket.on('connect_error', () => {
                 this.showToast(t('mpConnectError'));
@@ -87,6 +89,7 @@ mpRandomRoomName() {
                 this.mpCode = '';
                 this.mpRoomName = '';
                 this.mpQr = '';
+                this.mpJoinUrl = '';
                 this.showToast(t('mpDisconnected'));
             });
             this.mpSocket.on('player-list', ({ players }) => {
@@ -151,11 +154,35 @@ mpRandomRoomName() {
                 this.mpIsHost = true;
                 this.mpPlayers = res.players;
                 this.mpQr = res.qr || '';
+                this.mpJoinUrl = res.joinUrl || '';
                 this.mpQuestionCount = 0;
                 this.mpPackName = '';
                 this.mpPackText = '';
                 this.mpScreen = 'lobby';
+                if (this.mpAutoHost) {
+                    this.mpAutoHost = false;
+                    const md = this.mpPendingPack;
+                    this.mpPendingPack = '';
+                    this.mpSendMarkdown(md);
+                }
             });
+        },
+
+        async mpCopyRoomLink() {
+            if (!this.mpJoinUrl) return;
+            const text = this.mpJoinUrl;
+            try {
+                await navigator.clipboard.writeText(text);
+                this.showToast(t('copied'));
+            } catch (err) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                this.showToast(t('copied'));
+            }
         },
 
         joinRoom() {
@@ -183,21 +210,42 @@ mpRandomRoomName() {
             });
         },
 
-        mpUploadFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                this.mpPackText = e.target.result;
-                this.mpSendPack();
-            };
-            reader.readAsText(file);
+        mpHostFromPacks() {
+            const selected = this.selectedPacks();
+            if (!selected.length) { this.showToast(t('selectAtLeastOne')); return; }
+            if (selected.some(p => p.source === 'ai_infinite')) { this.showToast(t('mpAiInfiniteSolo')); return; }
+            let pool = selected.flatMap(p => p.questions);
+            if (this.filterOutAnswered) pool = pool.filter(q => !this.history[q.id]);
+            if (!pool.length) { this.showToast(t('noAvailableQuestions')); return; }
+            const packName = selected.length === 1 ? selected[0].name : t('mpPacksName');
+            this.mpPendingPack = questionsToMarkdown(pool, packName);
+            this.view = 'multiplayer';
+            if (this.mpSocket?.connected) {
+                this.mpAutoHost = true;
+                this.createRoom();
+            } else {
+                this.mpAutoHost = true;
+                this.mpServer = this.mpServer || window.location.origin;
+                this.connectServer();
+            }
         },
 
-        mpSendPaste() {
-            if (!this.mpPasteText.trim()) return;
-            this.mpPackText = this.mpPasteText;
-            this.mpSendPack();
+        mpSendPack() {
+            this.mpSendMarkdown(this.mpPackText);
+        },
+
+        mpSendMarkdown(markdown) {
+            if (!this.mpSocket) return;
+            this.mpSocket.emit('upload-pack', { markdown }, (res) => {
+                if (!res.ok) {
+                    this.showToast(t('mpPackInvalid'));
+                    return;
+                }
+                this.mpQuestionCount = res.count;
+                this.mpPackName = res.packName;
+                this.mpPackText = '';
+                this.showToast(t('mpPackReady', { name: res.packName, count: res.count }));
+            });
         },
 
         mpSetHostPlays() {
@@ -207,22 +255,6 @@ mpRandomRoomName() {
                     this.mpHostPlays = !this.mpHostPlays;
                     this.showToast(t('mpStartError'));
                 }
-            });
-        },
-
-        mpSendPack() {
-            if (!this.mpSocket) return;
-            this.mpSocket.emit('upload-pack', { markdown: this.mpPackText }, (res) => {
-                if (!res.ok) {
-                    this.showToast(t('mpPackInvalid'));
-                    return;
-                }
-                this.mpQuestionCount = res.count;
-                this.mpPackName = res.packName;
-                this.mpPackText = '';
-                this.mpUploadMode = 'file';
-                this.mpPasteText = '';
-                this.showToast(t('mpPackReady', { name: res.packName, count: res.count }));
             });
         },
 
@@ -279,6 +311,7 @@ mpRandomRoomName() {
             this.mpCode = '';
             this.mpRoomName = '';
             this.mpQr = '';
+            this.mpJoinUrl = '';
             this.mpPlayers = [];
             this.mpQuestionCount = 0;
             this.mpPackName = '';

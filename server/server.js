@@ -47,7 +47,7 @@ function genCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code;
     do {
-        code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        code = Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     } while ([...rooms.values()].some(r => r.code === code));
     return code;
 }
@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
         } catch {
             // QR niekrytyczny — gracze mogą wpisać kod ręcznie
         }
-        ack({ ok: true, roomId, code: room.code, name: room.name, players: playerList(room), qr });
+        ack({ ok: true, roomId, code: room.code, name: room.name, players: playerList(room), qr, joinUrl });
     });
 
     socket.on('set-host-plays', ({ hostPlays }, ack) => {

@@ -65,6 +65,15 @@ The multiplayer server can be hosted publicly on [Render.com](https://render.com
 
 ## Changelog
 
+### v0.4.5
+- Infinite AI quiz — AI generates questions in the background during play (category badge, subcategory picker, auto-advance).
+- Wikipedia context refactor: `prop=extracts` full article intro with 3-step fallback.
+- Multiplayer: host starts directly from dashboard packs (no in-lobby upload), copyable room join link, shorter 3-char room codes.
+
+### v0.4.4
+- Multiple AI connections (Gemini + OpenAI-compatible providers) — switchable, each with its own API URL, model and key.
+- Per-connection "Test" button that queries the model and shows its reply.
+
 ### v0.4.3
 - Settings moved to a separate page (theme, palette, language, sound, Gemini API key).
 - New pack: Zaćmienie.

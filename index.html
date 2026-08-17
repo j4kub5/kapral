@@ -131,6 +131,9 @@
                         <button class="btn-auto" style="padding: 0.5rem 1.5rem;" :disabled="selectedPacks().length === 0" @click="startQuizFromPacks()">
                             <i class="fa-solid fa-play"></i> <span x-text="t('start')"></span>
                         </button>
+                        <button class="outline btn-auto" style="padding: 0.5rem 1.5rem;" :disabled="selectedPacks().length === 0" @click="mpHostFromPacks()">
+                            <i class="fa-solid fa-users"></i> <span x-text="t('mpStartMultiplayer')"></span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -442,7 +445,7 @@
                             <i class="fa-solid fa-plus"></i> <span x-text="t('mpCreateRoom')"></span>
                         </button>
                         <span style="color: var(--pico-muted-color);" x-text="t('mpOr')"></span>
-                        <input x-model="mpJoinCode" :placeholder="t('mpRoomCode')" maxlength="6" style="margin: 0; width: 110px; text-transform: uppercase;">
+                        <input x-model="mpJoinCode" :placeholder="t('mpRoomCode')" maxlength="3" style="margin: 0; width: 80px; text-transform: uppercase;">
                         <button class="outline" @click="joinRoom()">
                             <i class="fa-solid fa-right-to-bracket"></i> <span x-text="t('mpJoinRoom')"></span>
                         </button>
@@ -475,6 +478,17 @@
                         </div>
                     </template>
 
+                    <template x-if="mpIsHost && mpJoinUrl">
+                        <div style="text-align: center; margin: 0.5rem 0;">
+                            <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+                                <small style="word-break: break-all;" x-text="mpJoinUrl"></small>
+                                <button class="outline btn-sm" type="button" @click="mpCopyRoomLink()">
+                                    <i class="fa-solid fa-copy"></i> <span x-text="t('mpCopyLink')"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
                     <!-- Host: upload pack -->
                     <div x-show="mpIsHost" style="margin-bottom: 1rem;">
                         <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 1rem;">
@@ -482,25 +496,7 @@
                             <span x-text="t('mpHostPlays')"></span>
                         </label>
                         <template x-if="!mpQuestionCount">
-                            <div>
-                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                    <button class="outline" @click="mpUploadMode = 'file'">
-                                        <i class="fa-solid fa-file-arrow-up"></i> <span x-text="t('mpUploadPack')"></span>
-                                    </button>
-                                    <button class="outline" @click="mpUploadMode = 'paste'">
-                                        <i class="fa-solid fa-clipboard"></i> <span x-text="t('mpPastePack')"></span>
-                                    </button>
-                                </div>
-                                <div x-show="mpUploadMode === 'file'" style="margin-top: 0.75rem;">
-                                    <input type="file" @change="mpUploadFile($event)" accept=".md" style="margin: 0;">
-                                </div>
-                                <div x-show="mpUploadMode === 'paste'" style="margin-top: 0.75rem;">
-                                    <textarea x-model="mpPasteText" :placeholder="t('mpPastePlaceholder')" rows="6" style="margin-bottom: 0.5rem;"></textarea>
-                                    <button class="btn-sm" @click="mpSendPaste()">
-                                        <i class="fa-solid fa-check"></i> <span x-text="t('save')"></span>
-                                    </button>
-                                </div>
-                            </div>
+                            <p style="color: var(--pico-muted-color); margin: 0;" x-text="t('mpUploadHint')"></p>
                         </template>
                         <div x-show="mpQuestionCount" style="background: var(--pico-card-background-color); padding: 0.75rem 1rem; border-radius: var(--pico-border-radius);">
                             <span x-text="t('mpPackReady', { name: mpPackName, count: mpQuestionCount })"></span>
@@ -761,13 +757,65 @@
                     <i class="fa-solid" :class="soundFeedback ? 'fa-volume-high' : 'fa-volume-xmark'"></i> <span x-text="soundFeedback ? t('soundOn') : t('soundOff')"></span>
                 </button>
 
-                <h4 style="margin: 1.5rem 0 0.5rem;"><i class="fa-solid fa-key"></i> <span x-text="t('aiKeyLabel')"></span></h4>
-                <input x-model="geminiKey" type="password" :placeholder="t('aiKeyPlaceholder')" @keydown.enter.prevent="setGeminiKey(geminiKey)">
-                <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                    <button x-show="geminiKey" class="btn-sm" @click="setGeminiKey(geminiKey)" x-text="t('aiKeySave')"></button>
-                    <button x-show="geminiKey" class="btn-sm outline" @click="setGeminiKey('')" x-text="t('aiKeyRemove')"></button>
+                <h4 style="margin: 1.5rem 0 0.5rem;"><i class="fa-solid fa-key"></i> <span x-text="t('aiConnections')"></span></h4>
+                <template x-if="!aiConnections.length">
+                    <p style="color: var(--pico-muted-color); margin: 0 0 0.5rem;" x-text="t('aiNoConnection')"></p>
+                </template>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <template x-for="c in aiConnections" :key="c.id">
+                        <div>
+                            <div class="ai-conn-row" :class="c.id === aiActiveId ? 'active' : ''">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                        <strong x-text="c.name"></strong>
+                                        <span class="pack-badge" :class="c.provider === 'gemini' ? 'builtin' : 'user'" x-text="c.provider === 'gemini' ? 'Gemini' : 'OpenAI'"></span>
+                                        <span x-show="c.provider !== 'gemini'" style="color: var(--pico-muted-color); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" x-text="c.model"></span>
+                                        <span x-show="c.id === aiActiveId" style="color: #10b981; font-size: 0.8rem; font-weight: 700;" x-text="t('aiActive')"></span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.35rem; flex-shrink: 0;">
+                                    <button class="btn-xs outline" @click="testAIConnection(c)" :disabled="aiTest.loading" :title="t('aiTest')"><i class="fa-solid fa-bolt" :class="{'fa-spin': aiTest.loading && aiTest.id === c.id}"></i></button>
+                                    <button x-show="c.id !== aiActiveId" class="btn-xs outline secondary" @click="setActiveAIConnection(c.id)" :title="t('aiActivate')"><i class="fa-solid fa-check"></i></button>
+                                    <button class="btn-xs outline" @click="openAIConnEdit(c)" :title="t('edit')"><i class="fa-solid fa-pen"></i></button>
+                                    <button class="btn-xs outline secondary" @click="removeAIConnection(c.id)" :title="t('aiDeleteConnection')"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </div>
+                            <div x-show="aiTest.id === c.id" class="ai-test-result" :class="aiTest.loading ? '' : (aiTest.ok ? 'ok' : 'err')">
+                                <template x-if="aiTest.loading"><span><i class="fa-solid fa-spinner fa-spin"></i> <span x-text="t('aiTesting')"></span></span></template>
+                                <template x-if="!aiTest.loading && aiTest.text"><span x-text="(aiTest.ok ? t('aiTestReply') + ': ' : t('aiTestError') + ': ') + aiTest.text"></span></template>
+                            </div>
+                        </div>
+                    </template>
                 </div>
-                <small style="display: block; margin-top: 0.5rem; color: var(--pico-muted-color);" x-text="t('aiKeyHint')"></small>
+
+                <button x-show="!aiConnEditing" class="outline btn-sm" @click="openAIConnAdd()">
+                    <i class="fa-solid fa-plus"></i> <span x-text="t('aiAddConnection')"></span>
+                </button>
+
+                <div x-show="aiConnEditing" style="margin-top: 0.75rem; padding: 1rem; border: 1px solid var(--pico-border-color); border-radius: var(--pico-border-radius);">
+                    <h5 style="margin-top: 0;" x-text="t('aiEditConnection')"></h5>
+                    <input x-model="aiConnForm.name" :placeholder="t('aiConnectionName')">
+                    <select x-model="aiConnForm.provider" style="margin-top: 0.5rem; width: 100%;">
+                        <option value="gemini">Gemini</option>
+                        <option value="openai">OpenAI-compatible</option>
+                    </select>
+                    <template x-if="aiConnForm.provider === 'openai'">
+                        <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <input x-model="aiConnForm.baseUrl" :placeholder="t('aiBaseURLLabel')">
+                            <input x-model="aiConnForm.model" :placeholder="t('aiModelLabel')">
+                            <input x-model="aiConnForm.apiKey" type="password" :placeholder="t('aiKeyPlaceholder')">
+                        </div>
+                    </template>
+                    <template x-if="aiConnForm.provider === 'gemini'">
+                        <div style="margin-top: 0.5rem;">
+                            <input x-model="aiConnForm.apiKey" type="password" :placeholder="t('aiKeyPlaceholder')">
+                        </div>
+                    </template>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                        <button class="btn-sm" @click="saveAIConnFromForm()" x-text="t('save')"></button>
+                        <button class="btn-sm outline" @click="aiConnEditing = false" x-text="t('cancel')"></button>
+                    </div>
+                </div>
             </article>
         </main>
 

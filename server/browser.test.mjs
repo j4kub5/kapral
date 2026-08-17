@@ -78,7 +78,9 @@ try {
   await host.evaluate(() => { const s = document.body._x_dataStack[0]; s.mpHostPlays = false; s.createRoom(); });
   await waitScreen(host, 'lobby');
   const code = await getCode(host);
-  assert.match(code, /^[A-Z0-9]{6}$/, 'room code is 6 alnum chars');
+  assert.match(code, /^[A-Z0-9]{3}$/, 'room code is 3 alnum chars');
+  // the charset excludes O I 0 1 — if we got one of those, the regex is too loose
+  assert.ok(!/[OIO10]/.test(code), 'room code chars should be from safe charset');
 
   log('players join ' + code);
   await Promise.all([join(p1, code), join(p2, code)]);

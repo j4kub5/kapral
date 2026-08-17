@@ -126,7 +126,32 @@ function sanitizeQuestion(q) {
     };
 }
 
+function questionsToMarkdown(questions, name) {
+    const byCategory = {};
+    (questions || []).forEach(q => {
+        if (!byCategory[q.category]) byCategory[q.category] = [];
+        byCategory[q.category].push(q);
+    });
+
+    const lines = [`# ${name}`];
+    for (const [cat, qs] of Object.entries(byCategory)) {
+        lines.push(`\n## ${cat}`);
+        qs.forEach(q => {
+            lines.push(`\n### ${q.question}`);
+            if (q.imageUrl) lines.push(`\n![${q.question}](${q.imageUrl})`);
+            lines.push('');
+            q.options.forEach((opt, i) => {
+                lines.push(`${i === q.answer ? '- [x]' : '- [ ]'} ${opt}`);
+            });
+            if (q.explanation) lines.push(`\n> ${currentLang === 'en' ? 'Explanation' : 'Wyjaśnienie'}: ${q.explanation}`);
+        });
+    }
+
+    return lines.join('\n');
+}
+
 globalThis.parseMarkdownWithMarked = parseMarkdownWithMarked;
 globalThis.shuffleQuestionOptions = shuffleQuestionOptions;
 globalThis.shuffleArray = shuffleArray;
 globalThis.sanitizeQuestion = sanitizeQuestion;
+globalThis.questionsToMarkdown = questionsToMarkdown;

@@ -37,7 +37,14 @@ function quizApp() {
         answers: [],
         soundFeedback: localStorage.getItem('quiz_soundFeedback') !== '0',
         _audioCtx: null,
-        geminiKey: localStorage.getItem('quiz_gemini_key') || '',
+        aiConnections: (() => {
+            try { return JSON.parse(localStorage.getItem('quiz_ai_connections')) || []; }
+            catch { return []; }
+        })(),
+        aiActiveId: localStorage.getItem('quiz_ai_active_id') || '',
+        aiConnEditing: false,
+        aiConnForm: { id: '', name: '', provider: 'openai', baseUrl: '', model: '', apiKey: '' },
+        aiTest: { loading: false, id: '', ok: false, text: '' },
         aiTopic: '',
         aiCount: 10,
         aiUseWiki: true,
@@ -45,7 +52,6 @@ function quizApp() {
         aiStep: '',
         aiError: '',
         aiModalVisible: false,
-        geminiModel: 'gemini-3.6-flash',
         aiInfiniteActive: false,
         aiInfiniteTopic: '',
         aiInfiniteSubtopic: '',
@@ -72,7 +78,99 @@ function quizApp() {
             this.loadBuiltinPacks();
             this.loadHelp();
             this.initMp();
+            this.migrateAIConnections();
             document.addEventListener('click', this.onDocClick.bind(this));
+        },
+
+        migrateAIConnections() {
+            if (this.aiConnections.length) return;
+            const legacyKey = localStorage.getItem('quiz_gemini_key');
+            if (legacyKey) {
+                this.aiConnections.push({
+                    id: 'c' + Date.now().toString(36),
+                    name: 'Gemini',
+                    provider: 'gemini',
+                    baseUrl: '',
+                    model: '',
+                    apiKey: legacyKey,
+                });
+                this.aiActiveId = this.aiConnections[0].id;
+                localStorage.setItem('quiz_ai_connections', JSON.stringify(this.aiConnections));
+                localStorage.setItem('quiz_ai_active_id', this.aiActiveId);
+                localStorage.removeItem('quiz_gemini_key');
+            }
+        },
+
+        get activeAIConnection() {
+            return this.aiConnections.find(c => c.id === this.aiActiveId) || null;
+        },
+
+        persistAIConnections() {
+            localStorage.setItem('quiz_ai_connections', JSON.stringify(this.aiConnections));
+        },
+
+        saveAIConnection(conn) {
+            const trimmed = { ...conn, name: conn.name.trim(), apiKey: (conn.apiKey || '').trim() };
+            const idx = this.aiConnections.findIndex(c => c.id === trimmed.id);
+            if (idx >= 0) {
+                this.aiConnections[idx] = trimmed;
+            } else {
+                trimmed.id = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e3).toString(36);
+                this.aiConnections.push(trimmed);
+                if (!this.aiActiveId) this.aiActiveId = trimmed.id;
+            }
+            this.persistAIConnections();
+            localStorage.setItem('quiz_ai_active_id', this.aiActiveId);
+            this.showToast(t('aiConnectionsSaved'));
+        },
+
+        removeAIConnection(id) {
+            this.aiConnections = this.aiConnections.filter(c => c.id !== id);
+            if (this.aiActiveId === id) this.aiActiveId = this.aiConnections[0]?.id || '';
+            this.persistAIConnections();
+            localStorage.setItem('quiz_ai_active_id', this.aiActiveId);
+        },
+
+        setActiveAIConnection(id) {
+            if (this.aiConnections.some(c => c.id === id)) {
+                this.aiActiveId = id;
+                localStorage.setItem('quiz_ai_active_id', id);
+                this.showToast(t('aiActivated'));
+            }
+        },
+
+        openAIConnAdd() {
+            this.aiConnForm = { id: '', name: '', provider: 'openai', baseUrl: '', model: '', apiKey: '' };
+            this.aiConnEditing = true;
+        },
+
+        openAIConnEdit(conn) {
+            this.aiConnForm = { ...conn };
+            this.aiConnEditing = true;
+        },
+
+        saveAIConnFromForm() {
+            const f = this.aiConnForm;
+            if (!f.name.trim()) { this.showToast(t('aiConnectionNameRequired')); return; }
+            this.saveAIConnection({
+                id: f.id, name: f.name, provider: f.provider,
+                baseUrl: f.provider === 'openai' ? (f.baseUrl || '').trim() : '',
+                model: f.provider === 'openai' ? (f.model || '').trim() : '',
+                apiKey: f.apiKey
+            });
+            this.aiConnEditing = false;
+        },
+
+        async testAIConnection(conn) {
+            this.aiTest = { loading: true, id: conn.id, ok: false, text: '' };
+            try {
+                const reply = await this.callLLM('Reply with exactly: OK', conn);
+                this.aiTest = { loading: false, id: conn.id, ok: true, text: reply };
+                this.showToast(t('aiTestOk'));
+            } catch (err) {
+                this.aiTest = { loading: false, id: conn.id, ok: false, text: err.message || '' };
+                this.showToast(t('aiTestFailed'));
+            }
         },
 
         async onDocClick(e) {
@@ -673,28 +771,7 @@ function quizApp() {
 
         exportPackAsMarkdown(pack) {
             if (!pack) return;
-
-            const byCategory = {};
-            pack.questions.forEach(q => {
-                if (!byCategory[q.category]) byCategory[q.category] = [];
-                byCategory[q.category].push(q);
-            });
-
-            const lines = [`# ${pack.name}`];
-            for (const [cat, qs] of Object.entries(byCategory)) {
-                lines.push(`\n## ${cat}`);
-                qs.forEach(q => {
-                    lines.push(`\n### ${q.question}`);
-                    if (q.imageUrl) lines.push(`\n![${q.question}](${q.imageUrl})`);
-                    lines.push('');
-                    q.options.forEach((opt, i) => {
-                        lines.push(`${i === q.answer ? '- [x]' : '- [ ]'} ${opt}`);
-                    });
-                    if (q.explanation) lines.push(`\n> ${currentLang === 'en' ? 'Explanation' : 'Wyjaśnienie'}: ${q.explanation}`);
-                });
-            }
-
-            const md = lines.join('\n');
+            const md = questionsToMarkdown(pack.questions, pack.name);
             const blob = new Blob([md], { type: 'text/markdown' });
             this.downloadBlob(blob, `${pack.name.replace(/\s+/g, '_')}.md`);
         },
@@ -710,21 +787,8 @@ function quizApp() {
             }
         },
 
-        setGeminiKey(key) {
-            const trimmed = (key || '').trim();
-            this.geminiKey = trimmed;
-            if (trimmed) {
-                localStorage.setItem('quiz_gemini_key', trimmed);
-                this.showToast(t('aiKeySaved'));
-            }
-            else {
-                localStorage.removeItem('quiz_gemini_key');
-                this.showToast(t('aiKeyRemoved'));
-            }
-        },
-
         openAIGenerate() {
-            if (!this.geminiKey) {
+            if (!this.activeAIConnection) {
                 this.showToast(t('aiNoKey'));
                 return;
             }
@@ -756,7 +820,7 @@ function quizApp() {
                 if (this.aiUseWiki) context = await this.fetchWikiContext(wiki, topic);
                 this.aiStep = 'generating';
                 const prompt = this.buildAIQuestionPrompt(lang, topic, this.aiCount, context);
-                const md = await this.callGemini(prompt);
+                const md = await this.callLLM(prompt);
                 this.aiStep = 'parsing';
                 const parsed = parseMarkdownWithMarked(md);
                 if (!parsed.length) throw new Error(t('aiEmptyResult'));
@@ -774,7 +838,7 @@ function quizApp() {
         },
 
         openInfiniteAIModal() {
-            if (!this.geminiKey) { this.showToast(t('aiNoKey')); return; }
+            if (!this.activeAIConnection) { this.showToast(t('aiNoKey')); return; }
             this.aiInfiniteModalVisible = true;
         },
 
@@ -825,7 +889,7 @@ function quizApp() {
                 const recent = this.activeQuestions.slice(-20).map(q => q.question).join('\n- ');
                 const count = this.activeQuestions.length === 0 ? 10 : 5;
                 const prompt = this.buildAIQuestionPrompt(lang, topic, count, context, recent);
-                const md = await this.callGemini(prompt);
+                const md = await this.callLLM(prompt);
                 const parsed = parseMarkdownWithMarked(md);
                 const valid = parsed.filter(q => q.answer >= 0 && q.options?.length === 4);
                 if (!valid.length) throw new Error(t('aiEmptyResult'));
@@ -852,7 +916,7 @@ function quizApp() {
                 ? `Topic: "${this.aiInfiniteTopic}"\nCurrent subtopic: "${this.aiInfiniteSubtopic || 'general'}".\nSuggest 3 NEW specific subcategories for further quiz questions.\nReturn ONLY the 3 names, one per line, no bullets, no markdown.`
                 : `Temat: "${this.aiInfiniteTopic}"\nAktualna podkategoria: "${this.aiInfiniteSubtopic || 'ogólna'}".\nZasugeruj 3 NOWE konkretne podkategorie dla kolejnych pytań quizu.\nZwróć TYLKO 3 nazwy, każdą w osobnej linii, bez wypunktowania, bez markdown.`;
             try {
-                const md = await this.callGemini(prompt);
+                const md = await this.callLLM(prompt);
                 const names = (md || '').split('\n').map(s => s.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 3);
                 this.aiInfiniteSuggestions = names;
             } catch {
@@ -985,11 +1049,17 @@ Zasady:
             return [head, personaAndRules, format, context ? wiki : '', recall, out].filter(Boolean).join('\n\n');
         },
 
-        callGemini(prompt) {
-            return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent`, {
+        callLLM(prompt, conn) {
+            const c = conn || this.activeAIConnection;
+            if (!c) return Promise.reject(new Error(t('aiNoKey')));
+            return c.provider === 'gemini' ? this._llmGemini(c, prompt) : this._llmOpenAI(c, prompt);
+        },
+
+        _llmGemini(conn, prompt) {
+            return fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`, {
                 method: 'POST',
                 headers: {
-                    'x-goog-api-key': this.geminiKey,
+                    'x-goog-api-key': conn.apiKey,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -1003,6 +1073,31 @@ Zasady:
                 if (res.status === 403) throw new Error(apiMsg || t('aiForbidden'));
                 if (!res.ok) throw new Error(apiMsg || 'HTTP ' + res.status);
                 const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+                if (!text) throw new Error(t('aiEmptyResult'));
+                return text;
+            });
+        },
+
+        _llmOpenAI(conn, prompt) {
+            const base = String(conn.baseUrl || '').replace(/\/+$/, '');
+            return fetch(`${base}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + conn.apiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: conn.model,
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7
+                })
+            }).then(async (res) => {
+                const data = await res.json().catch(() => null);
+                const apiMsg = data?.error?.message;
+                if (res.status === 429) throw new Error(t('aiRateLimit') + (apiMsg ? ' ' + apiMsg : ''));
+                if (res.status === 401 || res.status === 403) throw new Error(apiMsg || t('aiForbidden'));
+                if (!res.ok) throw new Error(apiMsg || 'HTTP ' + res.status);
+                const text = data?.choices?.[0]?.message?.content || '';
                 if (!text) throw new Error(t('aiEmptyResult'));
                 return text;
             });
